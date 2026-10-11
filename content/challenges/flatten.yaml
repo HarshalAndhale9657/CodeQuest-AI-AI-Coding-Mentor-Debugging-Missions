@@ -1,0 +1,47 @@
+id: flatten
+type: build
+tier: 5
+title: "Flatten Nested List"
+concepts: {primary: recursion, secondary: [lists]}
+traps: [base_case, empty_input, deep_nesting]
+function: flatten
+description: |
+  Given an arbitrarily nested list of integers `nested`, return a flattened 1-dimensional list
+  containing all the integers in their original left-to-right order.
+edge_cases:
+  - an empty list or nested empty lists
+  - already flat list
+  - deeply nested single elements
+starter_code: |
+  def flatten(nested):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: [[[1, [2, 3]], [4, [5]]]], expected: [1, 2, 3, 4, 5], tags: [typical]}
+  - {id: v2, visibility: visible, args: [[]], expected: [], tags: [empty]}
+  - {id: v3, visibility: visible, args: [[1, 2, 3]], expected: [1, 2, 3], tags: [typical]}
+  - {id: h1, visibility: hidden, args: [[[], [[]], [[], []]]], expected: [], tags: [empty]}
+  - {id: h2, visibility: hidden, args: [[[[[[42]]]]]], expected: [42], tags: [single]}
+  - {id: h3, visibility: hidden, args: [[1, [2, [3, [4, [5]]]]]], expected: [1, 2, 3, 4, 5], tags: [boundary]}
+  - {id: h4, visibility: hidden, args: [[-5, [-10, [-15]]]], expected: [-5, -10, -15], tags: [negative]}
+  - {id: h5, visibility: hidden, args: [[0, [1, 2], 3, [4, [5, 6]], 7, [8, [9]]]], expected: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], tags: [large]}
+references:
+  - |
+    def flatten(nested):
+        res = []
+        for item in nested:
+            if isinstance(item, list):
+                res.extend(flatten(item))
+            else:
+                res.append(item)
+        return res
+  - |
+    def flatten(nested):
+        stack = list(reversed(nested))
+        res = []
+        while stack:
+            top = stack.pop()
+            if isinstance(top, list):
+                stack.extend(reversed(top))
+            else:
+                res.append(top)
+        return res

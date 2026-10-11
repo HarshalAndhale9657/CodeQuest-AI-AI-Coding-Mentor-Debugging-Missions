@@ -1,0 +1,44 @@
+id: second_largest
+type: build
+tier: 3
+title: "Second Largest Element"
+concepts: {primary: conditionals, secondary: [lists]}
+traps: [bad_initial_value, duplicates, empty_input]
+function: second_largest
+description: |
+  Given a list of numbers `nums`, return the second distinct largest number.
+  If the list has fewer than two distinct values, return `None`.
+edge_cases:
+  - list with fewer than 2 elements
+  - all elements identical
+  - negative numbers
+starter_code: |
+  def second_largest(nums):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: [[10, 20, 4, 45, 99]], expected: 45, tags: [typical]}
+  - {id: v2, visibility: visible, args: [[10, 10]], expected: null, tags: [duplicates]}
+  - {id: v3, visibility: visible, args: [[]], expected: null, tags: [empty]}
+  - {id: h1, visibility: hidden, args: [[5]], expected: null, tags: [single]}
+  - {id: h2, visibility: hidden, args: [[-10, -5, -20, -1]], expected: -5, tags: [negative]}
+  - {id: h3, visibility: hidden, args: [[100, 100, 50]], expected: 50, tags: [boundary]}
+  - {id: h4, visibility: hidden, args: [[0, 0, 0, 1]], expected: 0, tags: [zero]}
+  - {id: h5, visibility: hidden, args: [[12, 35, 1, 10, 34, 1]], expected: 34, tags: [large]}
+references:
+  - |
+    def second_largest(nums):
+        unique = list(set(nums))
+        if len(unique) < 2:
+            return None
+        unique.sort()
+        return unique[-2]
+  - |
+    def second_largest(nums):
+        first = second = None
+        for x in nums:
+            if first is None or x > first:
+                second = first
+                first = x
+            elif x != first and (second is None or x > second):
+                second = x
+        return second

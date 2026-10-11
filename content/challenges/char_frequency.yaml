@@ -1,0 +1,38 @@
+id: char_frequency
+type: build
+tier: 3
+title: "Character Frequency"
+concepts: {primary: dicts, secondary: [strings]}
+traps: [empty_input, case_sensitivity]
+function: char_frequency
+description: |
+  Given a string `s`, return a dictionary counting the occurrences of each character in `s`.
+  Keys should be the exact characters appearing in `s`, and values should be positive integers.
+edge_cases:
+  - an empty string
+  - a single character repeated
+  - characters including punctuation and spaces
+starter_code: |
+  def char_frequency(s):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: ["banana"], expected: {"b": 1, "a": 3, "n": 2}, tags: [typical]}
+  - {id: v2, visibility: visible, args: [""], expected: {}, tags: [empty]}
+  - {id: v3, visibility: visible, args: ["zzzz"], expected: {"z": 4}, tags: [single, duplicates]}
+  - {id: h1, visibility: hidden, args: ["a"], expected: {"a": 1}, tags: [single]}
+  - {id: h2, visibility: hidden, args: ["hello world"], expected: {"h": 1, "e": 1, "l": 3, "o": 2, " ": 1, "w": 1, "r": 1, "d": 1}, tags: [typical]}
+  - {id: h3, visibility: hidden, args: ["AaBb"], expected: {"A": 1, "a": 1, "B": 1, "b": 1}, tags: [boundary]}
+  - {id: h4, visibility: hidden, args: ["11223344"], expected: {"1": 2, "2": 2, "3": 2, "4": 2}, tags: [duplicates]}
+  - {id: h5, visibility: hidden, args: ["CodeQuest AI Mentor"], expected: {"C": 1, "o": 2, "d": 1, "e": 3, "Q": 1, "u": 1, "s": 1, "t": 2, " ": 2, "A": 1, "I": 1, "M": 1, "n": 1, "r": 1}, tags: [large]}
+references:
+  - |
+    def char_frequency(s):
+        counts = {}
+        for ch in s:
+            counts[ch] = counts.get(ch, 0) + 1
+        return counts
+  - |
+    from collections import Counter
+
+    def char_frequency(s):
+        return dict(Counter(s))

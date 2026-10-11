@@ -1,0 +1,53 @@
+id: valid_brackets
+type: build
+tier: 5
+title: "Valid Parentheses and Brackets"
+concepts: {primary: stack, secondary: [strings]}
+traps: [closer_first, empty_input, leftover_openers]
+function: valid_brackets
+description: |
+  Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`,
+  determine if the input string is valid.
+  An input string is valid if:
+  1. Open brackets must be closed by the same type of brackets.
+  2. Open brackets must be closed in the correct order.
+  3. Every close bracket has a corresponding open bracket of the same type.
+edge_cases:
+  - empty string
+  - closing bracket before opening bracket
+  - unmatched opening bracket at the end
+starter_code: |
+  def valid_brackets(s):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: ["()[]{}"], expected: true, tags: [typical]}
+  - {id: v2, visibility: visible, args: ["(]"], expected: false, tags: [typical]}
+  - {id: v3, visibility: visible, args: [""], expected: true, tags: [empty]}
+  - {id: h1, visibility: hidden, args: ["("], expected: false, tags: [single]}
+  - {id: h2, visibility: hidden, args: [")("], expected: false, tags: [boundary]}
+  - {id: h3, visibility: hidden, args: ["{[]}"], expected: true, tags: [typical]}
+  - {id: h4, visibility: hidden, args: ["((((("], expected: false, tags: [boundary]}
+  - {id: h5, visibility: hidden, args: ["{[()]}()[]{([{}])}"], expected: true, tags: [large]}
+references:
+  - |
+    def valid_brackets(s):
+        matching = {")": "(", "}": "{", "]": "["}
+        stack = []
+        for ch in s:
+            if ch in matching:
+                if not stack or stack[-1] != matching[ch]:
+                    return False
+                stack.pop()
+            else:
+                stack.append(ch)
+        return len(stack) == 0
+  - |
+    def valid_brackets(s):
+        stack = []
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        for char in s:
+            if char in pairs:
+                stack.append(char)
+            elif not stack or pairs[stack.pop()] != char:
+                return False
+        return not stack

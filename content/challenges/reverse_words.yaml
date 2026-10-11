@@ -1,0 +1,35 @@
+id: reverse_words
+type: build
+tier: 2
+title: "Reverse Words in a String"
+concepts: {primary: strings, secondary: [lists]}
+traps: [whitespace, empty_input]
+function: reverse_words
+description: |
+  Given a string `s`, return a string of the words in reverse order, joined by a single space.
+  A word is defined as a sequence of non-space characters. Ignore extra spaces between words,
+  as well as leading and trailing spaces.
+edge_cases:
+  - empty string or only whitespace
+  - single word with no spaces
+  - multiple consecutive spaces between words
+starter_code: |
+  def reverse_words(s):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: ["the sky is blue"], expected: "blue is sky the", tags: [typical]}
+  - {id: v2, visibility: visible, args: ["  hello world  "], expected: "world hello", tags: [boundary]}
+  - {id: v3, visibility: visible, args: ["a good   example"], expected: "example good a", tags: [typical]}
+  - {id: h1, visibility: hidden, args: [""], expected: "", tags: [empty]}
+  - {id: h2, visibility: hidden, args: ["   "], expected: "", tags: [empty]}
+  - {id: h3, visibility: hidden, args: ["word"], expected: "word", tags: [single]}
+  - {id: h4, visibility: hidden, args: ["  code   quest   ai  "], expected: "ai quest code", tags: [typical]}
+  - {id: h5, visibility: hidden, args: ["first second third fourth fifth"], expected: "fifth fourth third second first", tags: [large]}
+references:
+  - |
+    def reverse_words(s):
+        words = s.split()
+        return " ".join(reversed(words))
+  - |
+    def reverse_words(s):
+        return " ".join(s.split()[::-1])

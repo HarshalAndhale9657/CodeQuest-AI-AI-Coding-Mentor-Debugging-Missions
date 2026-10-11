@@ -1,0 +1,39 @@
+id: dedupe
+type: build
+tier: 3
+title: "Deduplicate Preserving Order"
+concepts: {primary: lists, secondary: [sets]}
+traps: [mutate_while_iterating, empty_input]
+function: dedupe
+description: |
+  Given a list of items `nums`, return a new list containing the distinct elements in the order
+  they first appeared in `nums`. Do not modify the input list.
+edge_cases:
+  - an empty list
+  - a list with all identical elements
+  - a list already having all unique elements
+starter_code: |
+  def dedupe(nums):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: [[1, 2, 2, 3, 1, 4]], expected: [1, 2, 3, 4], tags: [typical]}
+  - {id: v2, visibility: visible, args: [[]], expected: [], tags: [empty]}
+  - {id: v3, visibility: visible, args: [[5, 5, 5]], expected: [5], tags: [duplicates]}
+  - {id: h1, visibility: hidden, args: [[10]], expected: [10], tags: [single]}
+  - {id: h2, visibility: hidden, args: [[1, 2, 3, 4, 5]], expected: [1, 2, 3, 4, 5], tags: [typical]}
+  - {id: h3, visibility: hidden, args: [[-1, 0, -1, 2, 0, -3]], expected: [-1, 0, 2, -3], tags: [negative]}
+  - {id: h4, visibility: hidden, args: [[4, 3, 2, 1, 4, 3, 2, 1]], expected: [4, 3, 2, 1], tags: [boundary]}
+  - {id: h5, visibility: hidden, args: [[100, 100, 200, 100, 300, 200, 400]], expected: [100, 200, 300, 400], tags: [large]}
+references:
+  - |
+    def dedupe(nums):
+        seen = set()
+        result = []
+        for x in nums:
+            if x not in seen:
+                seen.add(x)
+                result.append(x)
+        return result
+  - |
+    def dedupe(nums):
+        return list(dict.fromkeys(nums))

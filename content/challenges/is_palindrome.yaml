@@ -1,0 +1,45 @@
+id: is_palindrome
+type: build
+tier: 2
+title: "Valid Palindrome"
+concepts: {primary: strings, secondary: [two_pointers]}
+traps: [case_sensitivity, off_by_one, empty_input]
+function: is_palindrome
+description: |
+  A phrase is a palindrome if, after converting all uppercase letters to lowercase and removing
+  all non-alphanumeric characters, it reads the same forward and backward.
+  Return `True` if `s` is a palindrome, or `False` otherwise.
+edge_cases:
+  - empty string or only punctuation
+  - single character
+  - mixed case letters
+starter_code: |
+  def is_palindrome(s):
+      pass
+tests:
+  - {id: v1, visibility: visible, args: ["A man, a plan, a canal: Panama"], expected: true, tags: [typical]}
+  - {id: v2, visibility: visible, args: ["race a car"], expected: false, tags: [typical]}
+  - {id: v3, visibility: visible, args: [" "], expected: true, tags: [empty]}
+  - {id: h1, visibility: hidden, args: [""], expected: true, tags: [empty]}
+  - {id: h2, visibility: hidden, args: ["a."], expected: true, tags: [single]}
+  - {id: h3, visibility: hidden, args: ["0P"], expected: false, tags: [boundary]}
+  - {id: h4, visibility: hidden, args: ["No 'x' in Nixon"], expected: true, tags: [typical]}
+  - {id: h5, visibility: hidden, args: ["Was it a car or a cat I saw?"], expected: true, tags: [typical]}
+references:
+  - |
+    def is_palindrome(s):
+        filtered = [c.lower() for c in s if c.isalnum()]
+        return filtered == filtered[::-1]
+  - |
+    def is_palindrome(s):
+        i, j = 0, len(s) - 1
+        while i < j:
+            while i < j and not s[i].isalnum():
+                i += 1
+            while i < j and not s[j].isalnum():
+                j -= 1
+            if s[i].lower() != s[j].lower():
+                return False
+            i += 1
+            j -= 1
+        return True
