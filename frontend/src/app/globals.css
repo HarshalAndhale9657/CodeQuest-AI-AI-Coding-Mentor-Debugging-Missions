@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b0f17;
+  --color-panel: #121826;
+  --color-panel-2: #182033;
+  --color-line: #263049;
+  --color-muted: #8b96ad;
+  --color-text: #e6ebf5;
+  --color-accent: #7c9cff;
+  --color-pass: #34d399;
+  --color-wrong: #fbbf24;
+  --color-error: #f87171;
+  --color-timeout: #c084fc;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Monaco decorations (global, Monaco renders outside React) */
+.cq-region-line {
+  background: rgba(124, 156, 255, 0.12);
+}
+.cq-region-gutter {
+  border-left: 3px solid var(--color-accent);
+  margin-left: 4px;
+}
+.cq-crash-line {
+  background: rgba(248, 113, 113, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
