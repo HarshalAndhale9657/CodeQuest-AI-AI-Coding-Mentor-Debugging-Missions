@@ -2,7 +2,15 @@
 const params = new URLSearchParams(location.search);
 const scenario = params.get("scenario") || "python";
 
-const PROBLEM = { title: "Two Sum", difficulty: "Easy", tags: ["array", "hash-table"] };
+const PROBLEM = {
+  title: "Two Sum",
+  difficulty: "Easy",
+  tags: ["array", "hash-table"],
+  statement:
+    "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up " +
+    "to target. You may assume that each input would have exactly one solution, and you may not use the same element " +
+    "twice.\n\nExample 1:\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\n\nConstraints:\n2 <= nums.length <= 10^4",
+};
 const EDITORS = {
   python: {
     language: "python",

@@ -1,14 +1,19 @@
 # CodeQuest Companion (Chrome / Edge, Manifest V3)
 
-Your CodeQuest mentor on LeetCode. It never shows a solution.
+Your CodeQuest tutor on LeetCode: a chat that knows which problem you're on. It never shows a solution.
 
 | Feature | What happens | Server endpoint |
 |---|---|---|
-| Check my approach | Your 1–2 sentence plan is compared with the problem's topic tags → verdict + a question | `POST /api/ext/approach` |
-| Hint | Concept-level hints that get more specific (max 3), keyed by topic tags, never LeetCode's own hints | `POST /api/ext/hint` |
-| Analyze my code | Reads your Python from the LeetCode editor on click and runs CodeQuest's mistake detectors | `POST /api/ext/analyze` |
-| **Auto-detected submissions** | When you press **Submit** on LeetCode, the final verdict is detected automatically. With **Auto-log** on, the result and your Python code are logged to CodeQuest; otherwise one click logs it | `POST /api/ext/sync` |
-| Mistake Memory | Your recurring and beaten mistakes plus your next CodeQuest mission, shared with the web app | `GET /api/ext/me` |
+| **Tutor chat** | Knows the open problem (title, difficulty, topics, statement) and, if you allow it, your code. Ask anything; the tutor answers Socratically, one idea at a time | `POST /api/ext/chat` |
+| Quick actions | **Hint** (3 levels, each more specific), **Check my approach**, **Review my code**, **Explain the problem**, **Edge cases**, **Complexity** | `POST /api/ext/chat` (mode) |
+| **Auto-detected submissions** | When you press **Submit** on LeetCode, the verdict appears in the chat with one-click review. With **Auto-log** on, the result and your Python code are logged to CodeQuest | `POST /api/ext/sync` |
+| Progress tab | Auto-log, last submission, and your Mistake Memory (recurring/beaten mistakes + next mission), shared with the web app | `GET /api/ext/me` |
+
+How the tutor stays honest:
+- **Rules first.** Requests for code or answers, and prompt-injection phrasing, are refused without calling a model.
+- **Deterministic grounding.** Every reply is built on CodeQuest's own analysis (static mistake detectors, approach check, concept hint ladder). That analysis is also the full fallback when AI is off, out of budget or unavailable, so the panel always works.
+- **Guarded AI** (`gpt-4.1-mini`, configurable with `CQ_CHAT_MODEL`). It follows progressive disclosure (no algorithm or key trick until hint 3), never invents bugs, and every reply passes an output guard (no code blocks, no code-shaped lines) with one strict retry.
+- **Privacy.** The statement and your code are sent only with a message, used for that one reply, never stored or logged. Chats live in the browser's session storage. Replies are labelled **AI tutor** or **CodeQuest** (rules).
 
 Mistakes are recorded only when a detector finding meets a failed verdict, the same rule the web app uses.
 

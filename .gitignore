@@ -35,6 +35,8 @@ env/
 # Data / models (link or use Git LFS instead)
 *.sqlite3
 *.db
+*.db-wal
+*.db-shm
 *.pt
 *.pth
 *.onnx

@@ -1,30 +1,61 @@
-// CodeQuest Companion side panel.
+// CodeQuest Companion side panel: a tutor chat that knows which LeetCode problem you are on.
 // Security notes:
-//  * Everything shown is rendered with textContent (never innerHTML), so server or page text can't inject markup.
+//  * All text is rendered with DOM nodes / textContent (never innerHTML): server, model and page text can't inject markup.
 //  * The extension token lives in chrome.storage.local and is sent only to the configured CodeQuest server.
-//  * Code is read from the LeetCode editor only when the learner presses a button, or automatically on
-//    LeetCode "Submit" when the learner has switched Auto-log on (handled by the service worker).
+//  * The problem statement and your code are read from the page only when you message the tutor (or on Submit with
+//    Auto-log on), are sent only to your CodeQuest server, and are never stored there. Chats live in session storage.
 import { describeSync } from "./lib/submission.js";
+import {
+  MAX_HINT_LEVEL,
+  MODE_LABELS,
+  SUGGESTION_LABELS,
+  historyForApi,
+  renderRich,
+  trimStored,
+} from "./lib/chat.js";
 
 const DEFAULT_API = "http://localhost:8000";
-const MAX_HINT_LEVEL = 3;
+const STATEMENT_LIMIT = 8000;
 const $ = (id) => document.getElementById(id);
 
-const state = { apiBase: DEFAULT_API, token: null, tabId: null, problem: null, hintLevel: {}, autoLog: false };
+const state = {
+  apiBase: DEFAULT_API,
+  token: null,
+  autoLog: false,
+  tabId: null,
+  problem: { kind: "none" },
+  chat: { slug: null, messages: [], hintLevel: 1 },
+  sending: false,
+  view: "chat",
+};
 
 // ------------------------------------------------------------------ storage
 
 async function loadSettings() {
-  const data = await chrome.storage.local.get(["apiBase", "token", "hintLevel", "autoLog"]);
+  const data = await chrome.storage.local.get(["apiBase", "token", "autoLog"]);
   state.apiBase = data.apiBase || DEFAULT_API;
   state.token = data.token || null;
-  state.hintLevel = data.hintLevel || {};
   state.autoLog = data.autoLog === true;
 }
 
 async function saveSettings(patch) {
   Object.assign(state, patch);
   await chrome.storage.local.set(patch);
+}
+
+const chatKey = (slug) => `chat:${slug}`;
+
+async function loadChat(slug) {
+  const stored = (await chrome.storage.session.get(chatKey(slug)))[chatKey(slug)];
+  return stored && Array.isArray(stored.messages)
+    ? { slug, messages: stored.messages, hintLevel: stored.hintLevel || 1 }
+    : { slug, messages: [], hintLevel: 1 };
+}
+
+async function saveChat(chat) {
+  if (!chat.slug) return;
+  chat.messages = trimStored(chat.messages);
+  await chrome.storage.session.set({ [chatKey(chat.slug)]: { messages: chat.messages, hintLevel: chat.hintLevel } });
 }
 
 // ------------------------------------------------------------------ API
@@ -48,7 +79,7 @@ async function api(path, body, method = "POST") {
       ...(method === "POST" ? { body: JSON.stringify(body ?? {}) } : {}),
     });
   } catch {
-    throw new ApiError(0, `Can't reach the CodeQuest server at ${state.apiBase}. Check Settings.`);
+    throw new ApiError(0, `Can't reach the CodeQuest server at ${state.apiBase}. Check that it's running, or change it in Settings.`);
   }
   let data = {};
   try {
@@ -68,7 +99,7 @@ async function api(path, body, method = "POST") {
   return data;
 }
 
-// ------------------------------------------------------------------ LeetCode page access (run in the page's MAIN world)
+// ------------------------------------------------------------------ LeetCode page access (functions run in the page's MAIN world)
 
 function pageReadEditor() {
   // LeetCode keeps several Monaco models alive (the solution editor plus plaintext/JSON test-case
@@ -88,8 +119,8 @@ function pageReadEditor() {
   return { code: model.getValue(), language: model.getLanguageId() };
 }
 
-async function pageFetchProblem(slug) {
-  const query = "query q($titleSlug: String!) { question(titleSlug: $titleSlug) { title difficulty topicTags { slug } } }";
+async function pageFetchProblem(slug, statementLimit) {
+  const query = "query q($titleSlug: String!) { question(titleSlug: $titleSlug) { title difficulty content topicTags { slug } } }";
   const res = await fetch("/graphql", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -100,13 +131,27 @@ async function pageFetchProblem(slug) {
   const json = await res.json();
   const q = json?.data?.question;
   if (!q) return null;
-  // Only metadata is returned: never the statement or LeetCode's own hints.
-  return { title: q.title, difficulty: q.difficulty, tags: (q.topicTags || []).map((t) => t.slug) };
+  let statement = "";
+  if (typeof q.content === "string" && q.content) {
+    // DOMParser never runs scripts; we only want the readable text (premium problems return no content).
+    const doc = new DOMParser().parseFromString(q.content, "text/html");
+    doc.querySelectorAll("sup").forEach((node) => node.prepend("^"));
+    statement = (doc.body.innerText || doc.body.textContent || "").replace(/\n{3,}/g, "\n\n").trim().slice(0, statementLimit);
+  }
+  return { title: q.title, difficulty: q.difficulty, tags: (q.topicTags || []).map((t) => t.slug), statement };
 }
 
 async function runInPage(func, args = []) {
   const [result] = await chrome.scripting.executeScript({ target: { tabId: state.tabId }, world: "MAIN", func, args });
   return result?.result ?? null;
+}
+
+async function readEditorSafely() {
+  try {
+    return await runInPage(pageReadEditor);
+  } catch {
+    return null;
+  }
 }
 
 function parseProblemUrl(url) {
@@ -123,30 +168,24 @@ function parseProblemUrl(url) {
   return match ? { kind: "problem", slug: match[1] } : { kind: "none" };
 }
 
-// ------------------------------------------------------------------ rendering helpers
+// ------------------------------------------------------------------ small UI helpers
 
-function setText(el, text, className = "") {
-  el.textContent = text;
-  el.className = `out ${className}`.trim();
+function setText(node, text, className = "") {
+  node.textContent = text;
+  node.className = `out ${className}`.trim();
 }
 
-function setBusy(button, busy, label) {
+function setBusy(button, busy, text) {
   button.disabled = busy;
-  if (label) button.textContent = label;
+  if (text) button.textContent = text;
 }
 
-function showError(el, err) {
-  setText(el, err instanceof ApiError ? err.message : "Something went wrong. Please try again.", "error");
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
-
-function render() {
-  $("pair-view").hidden = !!state.token;
-  $("main-view").hidden = !state.token;
-  $("api-base").value = state.apiBase;
-  $("auto-log").checked = state.autoLog;
-}
-
-// ------------------------------------------------------------------ Mistake Memory + submissions
 
 const LABELS = {
   off_by_one: "Off-by-one",
@@ -162,14 +201,315 @@ const LABELS = {
 };
 const label = (key) => LABELS[key] ?? key.replaceAll("_", " ");
 
-function listOf(items) {
-  const ul = document.createElement("ul");
-  ul.className = "memory-list";
-  for (const text of items) {
-    const li = document.createElement("li");
-    li.textContent = text;
-    ul.append(li);
+// ------------------------------------------------------------------ top-level rendering
+
+function render() {
+  const paired = !!state.token;
+  $("pair-view").hidden = paired;
+  $("tabs").hidden = !paired;
+  $("chat-view").hidden = !paired || state.view !== "chat";
+  $("progress-view").hidden = !paired || state.view !== "progress";
+  $("tab-chat").setAttribute("aria-selected", String(state.view === "chat"));
+  $("tab-progress").setAttribute("aria-selected", String(state.view === "progress"));
+  $("api-base").value = state.apiBase;
+  $("auto-log").checked = state.autoLog;
+}
+
+function switchView(view) {
+  state.view = view;
+  render();
+  if (view === "progress") refreshMemory();
+  else $("chat-input").focus();
+}
+
+function renderProblem() {
+  const p = state.problem;
+  const ready = p.kind === "problem" && !!p.meta;
+  document.querySelectorAll("[data-needs-problem]").forEach((b) => (b.disabled = !ready || state.sending));
+  const title = $("problem-title");
+  const status = $("problem-status");
+  const difficulty = $("problem-difficulty");
+  const tags = $("problem-tags");
+  tags.replaceChildren();
+  difficulty.hidden = true;
+  if (p.kind === "contest") {
+    title.textContent = "Contest in progress";
+    status.textContent = "CodeQuest Companion is disabled during contests.";
+    return;
   }
+  if (p.kind !== "problem") {
+    title.textContent = "No problem open";
+    status.textContent = "Open a LeetCode problem and your tutor will follow along.";
+    return;
+  }
+  if (!p.meta) {
+    title.textContent = p.slug.replaceAll("-", " ");
+    status.textContent = p.error || "Reading the problem…";
+    return;
+  }
+  title.textContent = p.meta.title;
+  if (p.meta.difficulty) {
+    difficulty.textContent = p.meta.difficulty;
+    difficulty.dataset.difficulty = p.meta.difficulty;
+    difficulty.hidden = false;
+  }
+  status.textContent = p.meta.statement
+    ? "Your tutor can see this problem and, if you allow it, your code."
+    : "Your tutor can see this problem's title and topics (the statement isn't available).";
+  const shown = p.meta.tags.slice(0, 4);
+  for (const tag of shown) tags.append(el("span", "tag", tag));
+  if (p.meta.tags.length > shown.length) tags.append(el("span", "tag more", `+${p.meta.tags.length - shown.length}`));
+  updateHintChip();
+}
+
+// ------------------------------------------------------------------ chat rendering
+
+function welcomeMessage(meta) {
+  return {
+    role: "assistant",
+    source: "rules",
+    content: `Hi! I'm your CodeQuest tutor for **${meta.title}**. I won't hand you the solution, but I'll help you get there: ask for a hint, describe your approach, or have me review your code.`,
+    suggestions: ["hint", "approach", "explain"],
+    ts: Date.now(),
+  };
+}
+
+function renderMessages() {
+  const box = $("messages");
+  box.replaceChildren();
+  const { messages } = state.chat;
+  if (state.problem.kind !== "problem") {
+    box.append(el("p", "empty", state.problem.kind === "contest"
+      ? "Good luck in the contest! Your tutor will be back afterwards."
+      : "Open any problem on leetcode.com and I'll follow along."));
+    return;
+  }
+  messages.forEach((m, i) => box.append(renderMessage(m, i === messages.length - 1)));
+  if (state.sending) {
+    const typing = el("div", "msg assistant typing");
+    typing.setAttribute("aria-label", "Tutor is typing");
+    typing.append(el("span"), el("span"), el("span"));
+    box.append(typing);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderMessage(m, isLast) {
+  if (m.role === "event") {
+    const card = el("div", `event ${m.verdict === "accepted" ? "accepted" : "failed"}`);
+    card.append(el("span", `badge ${m.verdict === "accepted" ? "accepted" : "failed"}`, m.statusMsg));
+    card.append(el("span", "event-text", m.content));
+    if (isLast && m.verdict !== "accepted") card.append(suggestionRow(["review", "hint"]));
+    return card;
+  }
+  if (m.role === "error") {
+    const card = el("div", "msg error-msg", m.content);
+    if (isLast && m.retry) {
+      const retry = el("button", "chip", "Try again");
+      retry.type = "button";
+      retry.addEventListener("click", () => {
+        state.chat.messages.pop();
+        sendToTutor(m.retry.mode, m.retry.text, { retry: true });
+      });
+      card.append(retry);
+    }
+    return card;
+  }
+  const bubble = el("div", `msg ${m.role}`);
+  if (m.role === "assistant") {
+    const meta = el("div", "msg-meta");
+    meta.append(el("span", `source ${m.source === "ai" ? "ai" : "rules"}`, m.source === "ai" ? "AI tutor" : "CodeQuest"));
+    if (m.refused) meta.append(el("span", "source refused", "won't give answers"));
+    bubble.append(meta);
+    const body = el("div", "msg-body");
+    body.append(renderRich(m.content));
+    bubble.append(body);
+    if (isLast && Array.isArray(m.suggestions) && m.suggestions.length) bubble.append(suggestionRow(m.suggestions));
+  } else {
+    bubble.textContent = m.content;
+  }
+  return bubble;
+}
+
+function suggestionRow(modes) {
+  const row = el("div", "suggestions");
+  for (const mode of modes) {
+    if (!SUGGESTION_LABELS[mode]) continue;
+    const usedUp = mode === "hint" && state.chat.hintLevel > MAX_HINT_LEVEL;
+    const chip = el("button", "chip", usedUp ? "Hints used up" : SUGGESTION_LABELS[mode]);
+    chip.type = "button";
+    chip.disabled = state.sending || usedUp;
+    chip.addEventListener("click", () => runMode(mode));
+    row.append(chip);
+  }
+  return row;
+}
+
+function updateHintChip() {
+  const next = state.chat.hintLevel;
+  $("hint-count").textContent = next > MAX_HINT_LEVEL ? "used up" : `${next}/${MAX_HINT_LEVEL}`;
+  const chip = document.querySelector('.chip[data-mode="hint"]');
+  if (chip && next > MAX_HINT_LEVEL) chip.disabled = true;
+}
+
+// ------------------------------------------------------------------ talking to the tutor
+
+function runMode(mode) {
+  const input = $("chat-input");
+  if (mode === "approach" && !input.value.trim()) {
+    input.value = "My approach: ";
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    autoGrow();
+    return;
+  }
+  if (mode === "approach") {
+    const text = input.value.trim().replace(/^my approach:\s*/i, "");
+    input.value = "";
+    autoGrow();
+    if (text) sendToTutor("approach", text);
+    return;
+  }
+  sendToTutor(mode, "");
+}
+
+async function sendToTutor(mode, text, { retry = false } = {}) {
+  const p = state.problem;
+  if (state.sending || p.kind !== "problem" || !p.meta) return;
+  if (mode === "hint" && state.chat.hintLevel > MAX_HINT_LEVEL) return;
+  const chat = state.chat;
+  const slug = p.slug;
+  const hintLevel = Math.min(chat.hintLevel, MAX_HINT_LEVEL);
+  const visible = mode === "approach"
+    ? `My approach: ${text}`
+    : text || (mode === "hint" ? `Give me hint ${hintLevel}` : MODE_LABELS[mode] || "Help");
+  if (!retry) chat.messages.push({ role: "user", content: visible, mode, ts: Date.now() });
+  const history = historyForApi(chat.messages.slice(0, -1));
+  state.sending = true;
+  renderProblem();
+  renderMessages();
+  await saveChat(chat);
+
+  const editor = $("include-code").checked ? await readEditorSafely() : null;
+  const body = {
+    mode,
+    message: text,
+    slug,
+    title: p.meta.title,
+    difficulty: p.meta.difficulty || "",
+    tags: p.meta.tags,
+    statement: p.meta.statement || "",
+    code: editor?.code ?? "",
+    language: editor?.language ?? "",
+    history,
+    hint_level: hintLevel,
+  };
+  try {
+    const reply = await api("/api/ext/chat", body);
+    const target = state.chat.slug === slug ? state.chat : await loadChat(slug);
+    target.messages.push({
+      role: "assistant",
+      content: reply.reply,
+      source: reply.source,
+      refused: reply.refused === true,
+      suggestions: (reply.suggestions || []).filter((s) => SUGGESTION_LABELS[s]),
+      ts: Date.now(),
+    });
+    if (mode === "hint" && !reply.refused) target.hintLevel = hintLevel + 1;
+    await saveChat(target);
+  } catch (err) {
+    const target = state.chat.slug === slug ? state.chat : await loadChat(slug);
+    target.messages.push({
+      role: "error",
+      content: err instanceof ApiError ? err.message : "Something went wrong talking to your tutor.",
+      retry: err instanceof ApiError && err.status === 429 ? null : { mode, text },
+      ts: Date.now(),
+    });
+    await saveChat(target);
+  } finally {
+    state.sending = false;
+    if (state.chat.slug === slug) {
+      renderProblem();
+      renderMessages();
+    }
+  }
+}
+
+function autoGrow() {
+  const input = $("chat-input");
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+}
+
+function onSubmitChat(event) {
+  event.preventDefault();
+  const input = $("chat-input");
+  const text = input.value.trim();
+  if (!text || state.sending) return;
+  input.value = "";
+  autoGrow();
+  // "My approach: ..." (pre-filled by the chip) is routed to the approach checker.
+  if (/^my approach:/i.test(text)) {
+    const plan = text.replace(/^my approach:\s*/i, "");
+    if (plan) sendToTutor("approach", plan);
+    return;
+  }
+  sendToTutor("chat", text);
+}
+
+async function onClearChat() {
+  if (state.sending || state.problem.kind !== "problem" || !state.problem.meta) return;
+  state.chat = { slug: state.problem.slug, messages: [welcomeMessage(state.problem.meta)], hintLevel: 1 };
+  await saveChat(state.chat);
+  renderProblem();
+  renderMessages();
+}
+
+// ------------------------------------------------------------------ active tab tracking
+
+async function openProblemChat() {
+  const p = state.problem;
+  if (p.kind !== "problem") {
+    state.chat = { slug: null, messages: [], hintLevel: 1 };
+    renderMessages();
+    return;
+  }
+  const chat = await loadChat(p.slug);
+  if (!chat.messages.length && p.meta) chat.messages.push(welcomeMessage(p.meta));
+  state.chat = chat;
+  if (chat.messages.length) await saveChat(chat);
+  renderProblem();
+  renderMessages();
+}
+
+async function refreshActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  state.tabId = tab?.id ?? null;
+  const parsed = parseProblemUrl(tab?.url);
+  if (parsed.kind === "problem" && state.problem.slug === parsed.slug && state.problem.meta) {
+    renderProblem();
+    return;
+  }
+  state.problem = parsed;
+  renderProblem();
+  await openProblemChat();
+  if (parsed.kind !== "problem") return;
+  try {
+    const meta = await runInPage(pageFetchProblem, [parsed.slug, STATEMENT_LIMIT]);
+    if (state.problem.slug !== parsed.slug) return; // the learner moved on meanwhile
+    if (meta) state.problem.meta = meta;
+    else state.problem.error = "Couldn't read this problem. Reload the LeetCode tab.";
+  } catch {
+    if (state.problem.slug === parsed.slug) state.problem.error = "Couldn't access the LeetCode tab. Reload it and try again.";
+  }
+  await openProblemChat();
+}
+
+// ------------------------------------------------------------------ progress: memory + submissions
+
+function listOf(items) {
+  const ul = el("ul", "memory-list");
+  for (const text of items) ul.append(el("li", "", text));
   return ul;
 }
 
@@ -180,28 +520,20 @@ async function refreshMemory() {
     const me = await api("/api/ext/me", null, "GET");
     out.replaceChildren();
     out.className = "";
-    const intro = document.createElement("p");
-    intro.className = "muted";
-    intro.textContent = `${me.user.name} · ${me.solved} CodeQuest missions solved`;
-    out.append(intro);
+    out.append(el("p", "muted", `${me.user.name} · ${me.solved} CodeQuest missions solved`));
     if (me.recurring.length) {
-      const head = document.createElement("p");
-      head.className = "error";
-      head.textContent = "Recurring mistakes to watch:";
-      out.append(head, listOf(me.recurring.map(label)));
+      out.append(el("p", "error", "Recurring mistakes to watch:"), listOf(me.recurring.map(label)));
     } else {
-      const ok = document.createElement("p");
-      ok.className = "ok";
-      ok.textContent = "No recurring mistakes right now.";
-      out.append(ok);
+      out.append(el("p", "ok", "No recurring mistakes right now."));
     }
     if (me.beaten.length) out.append(listOf(me.beaten.map((k) => `Beaten: ${label(k)}`)));
-    if (me.next_up.length) {
-      const next = document.createElement("p");
-      next.className = "muted";
-      next.textContent = `Next CodeQuest mission: ${me.next_up[0].title}. ${me.next_up[0].reason}.`;
-      out.append(next);
-    }
+    if (me.next_up.length) out.append(el("p", "muted", `Next CodeQuest mission: ${me.next_up[0].title}. ${me.next_up[0].reason}.`));
+    const ai = me.ai || { available: false, enabled: false };
+    $("ai-status").textContent = ai.enabled
+      ? "AI tutor: on (answers are checked for code before you see them)."
+      : ai.available
+        ? "AI tutor: off for your account (turn it on in CodeQuest settings). You still get rule-based help."
+        : "AI tutor: not configured on this server. You still get rule-based help.";
   } catch (err) {
     out.className = "error";
     out.textContent = err instanceof ApiError ? err.message : "Couldn't load your Mistake Memory.";
@@ -215,27 +547,45 @@ function renderLastSubmission(record) {
   out.className = "out";
   button.hidden = true;
   if (!record) return;
-  const badge = document.createElement("span");
-  badge.className = `badge ${record.verdict === "accepted" ? "accepted" : "failed"}`;
-  badge.textContent = record.statusMsg;
-  const title = document.createElement("span");
-  title.textContent = ` on ${record.slug}`;
-  const detail = document.createElement("p");
-  if (record.logged) {
-    detail.className = "ok";
-    detail.textContent = `Logged to CodeQuest. ${record.summary}`;
-  } else if (record.error) {
-    detail.className = "error";
-    detail.textContent = record.error;
+  out.append(el("span", `badge ${record.verdict === "accepted" ? "accepted" : "failed"}`, record.statusMsg), el("span", "", ` on ${record.slug}`));
+  let detail;
+  if (record.logged) detail = el("p", "ok", `Logged to CodeQuest. ${record.summary}`);
+  else if (record.error) {
+    detail = el("p", "error", record.error);
     button.hidden = false;
   } else {
-    detail.className = "muted";
-    detail.textContent = record.isPython
+    detail = el("p", "muted", record.isPython
       ? "Detected. Not logged yet (Auto-log is off)."
-      : "Detected. Only Python code can be analyzed; the verdict can still be logged.";
+      : "Detected. Only Python code can be analyzed; the verdict can still be logged.");
     button.hidden = false;
   }
-  out.append(badge, title, detail);
+  out.append(detail);
+}
+
+function eventText(record) {
+  if (record.verdict === "accepted") return record.logged ? `Accepted! Logged to CodeQuest. ${record.summary}` : "Accepted! Nicely done.";
+  if (record.logged) return `LeetCode said ${record.statusMsg}. ${record.summary} Want me to take a look?`;
+  return `LeetCode said ${record.statusMsg}. Want me to review your code, or give you a hint?`;
+}
+
+async function announceSubmission(record) {
+  if (!record || !record.slug) return;
+  const chat = state.chat.slug === record.slug ? state.chat : await loadChat(record.slug);
+  const existing = chat.messages.find((m) => m.role === "event" && m.submissionId === record.submissionId);
+  if (existing) {
+    existing.content = eventText(record); // same submission, now logged: update the card in place
+  } else {
+    chat.messages.push({
+      role: "event",
+      submissionId: record.submissionId,
+      statusMsg: record.statusMsg,
+      verdict: record.verdict,
+      content: eventText(record),
+      ts: Date.now(),
+    });
+  }
+  await saveChat(chat);
+  if (state.chat.slug === record.slug) renderMessages();
 }
 
 async function onLogLast() {
@@ -250,74 +600,40 @@ async function onLogLast() {
     await chrome.storage.local.set({ lastSubmission: { ...record, logged: true, summary: describeSync(result), error: "" } });
     await refreshMemory();
   } catch (err) {
-    await chrome.storage.local.set({
-      lastSubmission: { ...record, error: err instanceof ApiError ? err.message : "Logging failed." },
-    });
+    await chrome.storage.local.set({ lastSubmission: { ...record, error: err instanceof ApiError ? err.message : "Logging failed." } });
   } finally {
     setBusy(button, false, "Log this submission");
   }
 }
 
-function renderProblem() {
-  const ready = state.problem && state.problem.kind === "problem" && state.problem.meta;
-  document.querySelectorAll("[data-needs-problem]").forEach((b) => (b.disabled = !ready));
-  const status = $("problem-status");
-  delete status.dataset.difficulty; // set below once LeetCode's difficulty is known; CSS colours it
-  $("problem-title").textContent = "";
-  $("problem-tags").replaceChildren();
-  if (!state.problem || state.problem.kind === "none") {
-    status.textContent = "Open a LeetCode problem to begin.";
+async function onManualSync() {
+  const out = $("sync-out");
+  const button = $("sync-btn");
+  const p = state.problem;
+  if (p.kind !== "problem" || !p.meta) return;
+  const editor = await readEditorSafely();
+  if (!editor) {
+    setText(out, "Couldn't read the code editor. Make sure the problem's code editor is visible.", "error");
     return;
   }
-  if (state.problem.kind === "contest") {
-    status.textContent = "Contest pages are off-limits: CodeQuest Companion is disabled during contests.";
-    return;
-  }
-  if (!state.problem.meta) {
-    status.textContent = "Reading the problem…";
-    return;
-  }
-  status.textContent = state.problem.meta.difficulty || "";
-  if (state.problem.meta.difficulty) status.dataset.difficulty = state.problem.meta.difficulty;
-  $("problem-title").textContent = state.problem.meta.title;
-  for (const tag of state.problem.meta.tags) {
-    const chip = document.createElement("span");
-    chip.className = "tag";
-    chip.textContent = tag;
-    $("problem-tags").append(chip);
-  }
-  const level = state.hintLevel[state.problem.slug] || 0;
-  $("hint-btn").textContent = level >= MAX_HINT_LEVEL ? "No more hints" : `Show hint ${level + 1}`;
-  if (level >= MAX_HINT_LEVEL) $("hint-btn").disabled = true;
-}
-
-// ------------------------------------------------------------------ active tab tracking
-
-async function refreshActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  state.tabId = tab?.id ?? null;
-  const parsed = parseProblemUrl(tab?.url);
-  if (parsed.kind === "problem" && state.problem?.slug === parsed.slug && state.problem.meta) {
-    renderProblem();
-    return;
-  }
-  state.problem = parsed;
-  ["approach-out", "analyze-out", "sync-out"].forEach((id) => setText($(id), ""));
-  $("hint-out").replaceChildren();
-  renderProblem();
-  if (parsed.kind !== "problem") return;
+  setBusy(button, true, "Logging…");
   try {
-    const meta = await runInPage(pageFetchProblem, [parsed.slug]);
-    if (state.problem?.slug !== parsed.slug) return; // user moved on meanwhile
-    state.problem.meta = meta;
-    if (!meta) $("problem-status").textContent = "Couldn't read this problem's details. Reload the LeetCode tab.";
-  } catch {
-    $("problem-status").textContent = "Couldn't access the LeetCode tab. Reload it and try again.";
+    const data = await api("/api/ext/sync", {
+      slug: p.slug,
+      tags: p.meta.tags,
+      verdict: $("verdict").value,
+      code: String(editor.language).toLowerCase().startsWith("python") ? editor.code : "",
+    });
+    setText(out, `Logged. ${describeSync(data)}`, data.newly_recurring?.length ? "error" : "ok");
+    await refreshMemory();
+  } catch (err) {
+    setText(out, err instanceof ApiError ? err.message : "Logging failed.", "error");
+  } finally {
+    setBusy(button, false, "Log attempt");
   }
-  renderProblem();
 }
 
-// ------------------------------------------------------------------ actions
+// ------------------------------------------------------------------ pairing + settings
 
 async function onPair(event) {
   event.preventDefault();
@@ -344,139 +660,17 @@ async function onPair(event) {
   }
   await saveSettings({ token: data.token });
   status.textContent = "";
+  state.view = "chat";
   render();
   // Pairing succeeded; problems loading the tab or memory are reported by those views, not as a pairing failure.
   await Promise.allSettled([refreshActiveTab(), refreshMemory()]);
 }
 
-async function onApproach() {
-  const out = $("approach-out");
-  const button = $("approach-btn");
-  setBusy(button, true, "Checking…");
-  try {
-    const data = await api("/api/ext/approach", { text: $("approach-text").value, tags: state.problem.meta.tags });
-    out.replaceChildren();
-    out.className = "out";
-    const verdict = document.createElement("div");
-    verdict.className = `verdict ${data.verdict}`;
-    verdict.textContent = { on_track: "On track", partially: "Partly there", off_track: "Rethink the approach", unclear: "Tell me more" }[data.verdict] ?? data.verdict;
-    const question = document.createElement("p");
-    question.textContent = data.question;
-    out.append(verdict, question);
-  } catch (err) {
-    showError(out, err);
-  } finally {
-    setBusy(button, false, "Check approach");
-  }
-}
-
-async function onHint() {
-  const slug = state.problem.slug;
-  const level = (state.hintLevel[slug] || 0) + 1;
-  if (level > MAX_HINT_LEVEL) return;
-  const button = $("hint-btn");
-  setBusy(button, true, "Thinking…");
-  try {
-    const data = await api("/api/ext/hint", { tags: state.problem.meta.tags, level });
-    const item = document.createElement("li");
-    item.textContent = data.text;
-    $("hint-out").append(item);
-    $("hint-out").className = "out hints";
-    await saveSettings({ hintLevel: { ...state.hintLevel, [slug]: level } });
-  } catch (err) {
-    const item = document.createElement("li");
-    item.className = "error";
-    item.textContent = err instanceof ApiError ? err.message : "Could not load a hint.";
-    $("hint-out").append(item);
-  } finally {
-    button.disabled = false;
-    renderProblem();
-  }
-}
-
-async function readEditor(out) {
-  let editor;
-  try {
-    editor = await runInPage(pageReadEditor);
-  } catch {
-    editor = null;
-  }
-  if (!editor) {
-    setText(out, "Couldn't read the code editor. Make sure the problem's code editor is visible.", "error");
-    return null;
-  }
-  if (!String(editor.language).toLowerCase().startsWith("python")) {
-    setText(out, "Code analysis supports Python for now. Switch the editor language to Python 3.", "error");
-    return null;
-  }
-  return editor;
-}
-
-async function onAnalyze() {
-  const out = $("analyze-out");
-  const button = $("analyze-btn");
-  const editor = await readEditor(out);
-  if (!editor) return;
-  setBusy(button, true, "Analyzing…");
-  try {
-    const data = await api("/api/ext/analyze", { code: editor.code, language: "python" });
-    out.replaceChildren();
-    out.className = "out";
-    if (data.syntax_error) {
-      setText(out, `Python can't read line ${data.syntax_error.line}: ${data.syntax_error.message}.`, "error");
-    } else if (data.findings.length === 0) {
-      setText(out, "No common mistakes found. Now test it on edge cases: empty input, one element, the largest values.", "ok");
-    } else {
-      for (const f of data.findings) {
-        const row = document.createElement("p");
-        row.className = "finding";
-        const where = document.createElement("b");
-        where.textContent = `Line ${f.line}: `;
-        row.append(where, document.createTextNode(f.message));
-        out.append(row);
-      }
-    }
-  } catch (err) {
-    showError(out, err);
-  } finally {
-    setBusy(button, false, "Analyze my code");
-  }
-}
-
-async function onSync() {
-  const out = $("sync-out");
-  const button = $("sync-btn");
-  const editor = await readEditor(out);
-  if (!editor) return;
-  setBusy(button, true, "Logging…");
-  try {
-    const data = await api("/api/ext/sync", {
-      slug: state.problem.slug,
-      tags: state.problem.meta.tags,
-      verdict: $("verdict").value,
-      code: editor.code,
-    });
-    if (data.newly_recurring.length) {
-      setText(out, `Logged. Recurring mistake spotted: ${data.newly_recurring.join(", ").replaceAll("_", " ")}. Open CodeQuest for a targeted mission.`, "error");
-    } else if (data.recorded_mistakes.length) {
-      setText(out, `Logged. Noted: ${data.recorded_mistakes.join(", ").replaceAll("_", " ")}.`);
-    } else {
-      setText(out, "Logged. Nice work!", "ok");
-    }
-    await refreshMemory();
-  } catch (err) {
-    showError(out, err);
-  } finally {
-    setBusy(button, false, "Log attempt");
-  }
-}
-
 async function onSaveSettings() {
   const status = $("settings-status");
-  let base = $("api-base").value.trim().replace(/\/+$/, "");
   let url;
   try {
-    url = new URL(base);
+    url = new URL($("api-base").value.trim().replace(/\/+$/, ""));
   } catch {
     status.textContent = "Enter a full URL, e.g. https://codequest.example.com";
     return;
@@ -493,13 +687,19 @@ async function onSaveSettings() {
       return;
     }
   }
-  base = url.origin;
+  const base = url.origin;
   await saveSettings({ apiBase: base, token: base === state.apiBase ? state.token : null });
   status.textContent = "Saved.";
   render();
 }
 
 // ------------------------------------------------------------------ wiring
+
+function showPanelError(message) {
+  const bar = $("panel-error");
+  bar.textContent = `Something went wrong: ${message}. Reload the extension, and if it persists, report this message.`;
+  bar.hidden = false;
+}
 
 async function init() {
   await loadSettings();
@@ -508,6 +708,7 @@ async function init() {
     const panel = $("settings");
     panel.hidden = !panel.hidden;
     $("settings-toggle").setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) refreshMemory();
   });
   $("save-settings").addEventListener("click", onSaveSettings);
   $("disconnect").addEventListener("click", async () => {
@@ -515,17 +716,29 @@ async function init() {
     render();
   });
   $("pair-form").addEventListener("submit", onPair);
-  $("approach-btn").addEventListener("click", onApproach);
-  $("hint-btn").addEventListener("click", onHint);
-  $("analyze-btn").addEventListener("click", onAnalyze);
-  $("sync-btn").addEventListener("click", onSync);
+  $("tab-chat").addEventListener("click", () => switchView("chat"));
+  $("tab-progress").addEventListener("click", () => switchView("progress"));
+  $("chat-form").addEventListener("submit", onSubmitChat);
+  $("chat-input").addEventListener("input", autoGrow);
+  $("chat-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      $("chat-form").requestSubmit();
+    }
+  });
+  document.querySelectorAll(".chip[data-mode]").forEach((chip) =>
+    chip.addEventListener("click", () => runMode(chip.dataset.mode)));
+  $("clear-chat").addEventListener("click", onClearChat);
   $("log-last-btn").addEventListener("click", onLogLast);
+  $("sync-btn").addEventListener("click", onManualSync);
   $("auto-log").addEventListener("change", (event) => saveSettings({ autoLog: event.target.checked }));
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
     if (changes.lastSubmission) {
-      renderLastSubmission(changes.lastSubmission.newValue);
-      if (changes.lastSubmission.newValue?.logged) refreshMemory();
+      const record = changes.lastSubmission.newValue;
+      renderLastSubmission(record);
+      announceSubmission(record);
+      if (record?.logged) refreshMemory();
     }
     if (changes.token && !changes.token.newValue && state.token) {
       state.token = null;
@@ -534,18 +747,11 @@ async function init() {
   });
   const { lastSubmission } = await chrome.storage.local.get("lastSubmission");
   renderLastSubmission(lastSubmission);
-  chrome.tabs.onActivated.addListener(refreshActiveTab);
+  chrome.tabs.onActivated.addListener(() => refreshActiveTab());
   chrome.tabs.onUpdated.addListener((tabId, info) => {
     if (tabId === state.tabId && info.url) refreshActiveTab();
   });
   await Promise.allSettled([refreshActiveTab(), refreshMemory()]);
-}
-
-function showPanelError(message) {
-  const bar = $("panel-error");
-  if (!bar) return;
-  bar.textContent = `Something went wrong: ${message}. Reload the extension, and if it persists, report this message.`;
-  bar.hidden = false;
 }
 
 window.addEventListener("error", (event) => showPanelError(event.message || "script error"));
