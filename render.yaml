@@ -1,0 +1,29 @@
+# Render blueprint for the CodeQuest API (backend only; the frontend is on Vercel).
+# Render can't start Docker containers from inside a service, so the judge uses the restricted local
+# runner here (audit hooks + resource limits, no OS sandbox). For the full Docker sandbox, run the
+# backend on a VM with Docker (see README).
+services:
+  - type: web
+    name: codequest-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    # Runtime deps from backend/pyproject.toml; the app runs from rootDir so codequest needs no install step.
+    buildCommand: pip install "fastapi>=0.115" "pydantic>=2.7" "pyyaml>=6.0" "uvicorn>=0.30"
+    startCommand: uvicorn codequest.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: CQ_RUNNER
+        value: local
+      - key: CQ_DB_PATH
+        value: codequest.db
+      - key: CQ_ALLOWED_ORIGINS
+        value: https://codequest-ai-blond.vercel.app
+      - key: CQ_AI_BUDGET_USD
+        value: "2.0"
+      # Secret: set the value in the Render dashboard (never committed)
+      - key: OPENAI_API_KEY
+        sync: false
