@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import json
+import logging
 import os
 import threading
 import time
@@ -23,6 +24,8 @@ from codequest.ai import AILayer
 from codequest.companion_chat import CHAT_MODEL_DEFAULT, ChatRequest, CompanionTutor
 from codequest.sandbox.runner import Runner
 from codequest.store import Store
+
+log = logging.getLogger("codequest.service")
 
 RATE_PER_MINUTE = 6
 CHAT_PER_MINUTE = 8
@@ -177,13 +180,20 @@ class CodeQuestService:
     def _process(self, sid: str, user_id: str, token: str, attempt_id: str, ch: Challenge, code: str) -> None:
         try:
             self.store.set_status(sid, "running")
-            result = judge(ch, code, self.runner)
+            try:
+                result = judge(ch, code, self.runner)
+            except SubmissionTooLarge:
+                raise
+            except Exception:  # noqa: BLE001 - a sandbox blip (e.g. Docker hiccup): judging is pure, so retry once
+                log.warning("judging %s failed, retrying once", sid, exc_info=True)
+                result = judge(ch, code, self.runner)
             events = self._apply_learning(user_id, token, attempt_id, ch, result)
             public = result.public() | {"events": events}
             self.store.finish_submission(sid, "done", public, _internal(result))
         except SubmissionTooLarge as exc:
             self.store.finish_submission(sid, "error", {"error": str(exc)}, None)
         except Exception:  # noqa: BLE001 - never leave a submission stuck; infra errors are not the learner's fault
+            log.exception("judging %s failed", sid)
             self.store.finish_submission(sid, "error", {"error": "System error while judging. This is not your fault; please resubmit."}, None)
 
     def _apply_learning(self, user_id: str, token: str, attempt_id: str, ch: Challenge,

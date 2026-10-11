@@ -115,3 +115,28 @@ def test_priya_seed_is_a_consistent_story(client):
     assert me["mistakes"]["recurring"] == []                      # nothing recurring until the live demo
     assert me["mistakes"]["strength"]["off_by_one"] == pytest.approx(1.0)
     assert {b["concept"] for b in me["skills"] if b["attempts"]} >= {"loops", "conditionals", "strings"}
+
+
+class FlakyRunner(LocalRunner):
+    """Fails the first sandbox call like a Docker hiccup, then behaves."""
+
+    def __init__(self):
+        super().__init__()
+        self.failures_left = 1
+
+    def run(self, request, limits):
+        if self.failures_left:
+            self.failures_left -= 1
+            raise OSError("docker: Error response from daemon (simulated)")
+        return super().run(request, limits)
+
+
+def test_judge_retries_once_after_a_sandbox_blip():
+    service = CodeQuestService(Store(":memory:"), FlakyRunner(), load_all())
+    with TestClient(create_app(service)) as c:
+        headers = login(c)
+        code = "def class_average(scores):\n    p = [s for s in scores if s != -1]\n    return sum(p) / len(p) if p else 0.0\n"
+        sid = c.post("/api/submissions", json={"challenge_id": "class_average", "code": code}, headers=headers).json()["submission_id"]
+        body = wait_result(c, headers, sid)
+        assert body["status"] == "done"
+        assert body["result"]["all_passed"]
