@@ -9,10 +9,12 @@ import {
   CloudUpload,
   Code2,
   FileText,
+  History,
   Lightbulb,
   List,
   Lock,
   RotateCcw,
+  Scale,
   SquareCheck,
   Tags,
   Terminal,
@@ -27,6 +29,9 @@ import { CodeEditor, preloadEditor } from "@/components/code-editor";
 import { HintLadder } from "@/components/hint-ladder";
 import { MissionDescription } from "@/components/mission-description";
 import { ResultsBoard } from "@/components/results-board";
+import { JourneyPanel } from "@/components/signals/journey-panel";
+import { PredictPrompt } from "@/components/signals/predict-prompt";
+import { PredictionCard, RobustnessCard, RuleBanner } from "@/components/signals/result-signals";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/card";
 import { cx } from "@/components/ui/cx";
 import { ErrorState, Kbd, Skeleton } from "@/components/ui/states";
@@ -34,7 +39,14 @@ import { TabPanel, Tabs } from "@/components/ui/tabs";
 import { DifficultyLabel, Tag } from "@/components/ui/tag";
 import { ApiError, api } from "@/lib/api";
 import { conceptLabel } from "@/lib/format";
-import { isJudgeResult, type ChallengeDetail, type ChallengeSummary, type HintEntry, type JudgeResult } from "@/lib/types";
+import {
+  isJudgeResult,
+  type ChallengeDetail,
+  type ChallengeSummary,
+  type HintEntry,
+  type JudgeResult,
+  type PredictionInput,
+} from "@/lib/types";
 import { usePrefetchMission } from "@/lib/prefetch";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -200,7 +212,7 @@ function Mission() {
 }
 
 type LeftTab = "description" | "hints";
-type BottomTab = "testcase" | "result";
+type BottomTab = "testcase" | "result" | "journey";
 
 function Workspace({
   challenge,
@@ -227,14 +239,22 @@ function Workspace({
   const [hintError, setHintError] = useState<string | null>(null);
   const [leftTab, setLeftTab] = useState<LeftTab>("description");
   const [bottomTab, setBottomTab] = useState<BottomTab>("testcase");
+  // Predict Before You Run: the question is open, and which prompt this page already answered (until the server
+  // confirms it with a fresh challenge view, so a quick second Submit doesn't ask twice).
+  const [asking, setAsking] = useState(false);
+  const [usedPrompt, setUsedPrompt] = useState<string | null>(null);
 
   const submission = useQuery({
     queryKey: ["submission", submissionId],
     queryFn: () => api.submission(submissionId as string),
     enabled: !!submissionId,
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === "done" || status === "error" ? false : 400;
+      const data = query.state.data;
+      if (data?.status === "error") return false;
+      if (data?.status !== "done") return 400;
+      // The verdict is out; keep polling only while the robustness search beyond the tests is still running.
+      const result = isJudgeResult(data.result) ? data.result : null;
+      return result?.robustness?.status === "checking" ? 600 : false;
     },
     // Keep polling while the learner looks at another tab (e.g. LeetCode); otherwise the verdict waits for focus.
     refetchIntervalInBackground: true,
@@ -249,18 +269,23 @@ function Workspace({
       ? submission.data.result.error
       : null;
 
-  // Once a verdict lands, the hint gate and the learner profile have changed on the server.
+  // Once a verdict lands, the hint gate, the prediction question, the journey and the profile have changed.
   useEffect(() => {
     if (!finished) return;
-    void queryClient.invalidateQueries({ queryKey: ["challenge", challenge.id] });
+    void queryClient
+      .invalidateQueries({ queryKey: ["challenge", challenge.id] })
+      .then(() => setUsedPrompt(null)); // the fresh view now says whether this attempt still has a question
+    void queryClient.invalidateQueries({ queryKey: ["journey", challenge.id] });
     void queryClient.invalidateQueries({ queryKey: ["me"] });
     void queryClient.invalidateQueries({ queryKey: ["challenges"] });
   }, [finished, submissionId, queryClient, challenge.id]);
 
   const submit = useMutation({
-    mutationFn: () => api.submit(challenge.id, codeRef.current),
-    onMutate: () => {
+    mutationFn: (prediction?: PredictionInput) => api.submit(challenge.id, codeRef.current, prediction),
+    onMutate: (prediction) => {
       setSubmitError(null);
+      setAsking(false);
+      if (prediction) setUsedPrompt(prediction.prompt_id);
       setBottomTab("result");
     },
     onSuccess: (data) => setSubmissionId(data.submission_id),
@@ -319,10 +344,20 @@ function Workspace({
   );
   const onCursor = useCallback((line: number, col: number) => status.set({ line, col }), [status]);
 
+  const livePrompt = liveChallenge.data.prediction;
+  const prompt = livePrompt && livePrompt.prompt_id !== usedPrompt ? livePrompt : null;
+
   const doSubmit = useCallback(() => {
     flushDraft();
-    if (!judging && !submit.isPending) submit.mutate();
-  }, [flushDraft, judging, submit]);
+    if (judging || submit.isPending) return;
+    if (prompt) {
+      // First submission of the attempt: ask the prediction question first (in the Test Result pane).
+      setAsking(true);
+      setBottomTab("result");
+      return;
+    }
+    submit.mutate(undefined);
+  }, [flushDraft, judging, submit, prompt]);
 
   const resetCode = () => {
     flushDraft();
@@ -338,7 +373,8 @@ function Workspace({
 
   const region = focusRegion ?? ladder.at(-1)?.region ?? null;
   const adaptation = result?.events?.adaptation ?? null;
-  const solved = result?.all_passed ?? false;
+  const violations = result?.rule_violations ?? [];
+  const solved = (result?.all_passed ?? false) && violations.length === 0;
   const canHint = !!result && !result.all_passed && !judging;
   const busy = judging || submit.isPending;
 
@@ -398,6 +434,12 @@ function Workspace({
       {challenge.max_changed_lines && (
         <p className="rounded-lc bg-medium/10 px-3 py-2 text-sm text-medium">
           Fix it by changing at most {challenge.max_changed_lines} lines.
+        </p>
+      )}
+      {challenge.forbidden_calls.length > 0 && (
+        <p className="flex items-center gap-2 rounded-lc bg-medium/10 px-3 py-2 text-sm text-medium">
+          <Scale size={15} aria-hidden /> Mission rule: don&apos;t use{" "}
+          {challenge.forbidden_calls.map((c) => `${c.startsWith(".") ? c.slice(1) : c}()`).join(", ")}.
         </p>
       )}
       {challenge.visible_tests.map((t, i) => (
@@ -518,6 +560,17 @@ function Workspace({
   );
 
   const resultBody = (() => {
+    if (asking && prompt && !busy) {
+      return (
+        <PredictPrompt
+          key={prompt.prompt_id}
+          prompt={prompt}
+          busy={submit.isPending}
+          onSubmit={(prediction) => submit.mutate(prediction)}
+          onCancel={() => setAsking(false)}
+        />
+      );
+    }
     if (submitError ?? judgeError) {
       return (
         <p role="alert" className="rounded-lc bg-red/10 px-3 py-2 text-sm text-text-1">
@@ -550,12 +603,20 @@ function Workspace({
           <div className="flex flex-wrap items-center gap-2 rounded-lc bg-green/10 px-3 py-2 text-sm text-text-1">
             <CheckCircle2 size={18} className="text-green" aria-hidden />
             Mission complete! Every test passed, including the hidden ones.
-            <Link href="/home" className="ml-auto font-medium text-green hover:underline">
-              Next mission →
-            </Link>
+            <span className="ml-auto flex items-center gap-3">
+              <button type="button" onClick={() => setBottomTab("journey")} className="font-medium text-text-2 hover:text-text-1 hover:underline">
+                Replay your journey
+              </button>
+              <Link href="/home" className="font-medium text-green hover:underline">
+                Next mission →
+              </Link>
+            </span>
           </div>
         )}
+        {result.all_passed && violations.length > 0 && <RuleBanner violations={violations} />}
         <ResultsBoard key={submissionId} result={result}>
+          {result.prediction && <PredictionCard prediction={result.prediction} />}
+          {result.robustness && <RobustnessCard robustness={result.robustness} />}
           {adaptation && <AdaptationPanel adaptation={adaptation} />}
         </ResultsBoard>
       </div>
@@ -573,6 +634,7 @@ function Workspace({
           tabs={[
             { id: "testcase", label: "Testcase", icon: <SquareCheck size={15} className="text-green" aria-hidden /> },
             { id: "result", label: "Test Result", icon: <Terminal size={15} className="text-green" aria-hidden /> },
+            { id: "journey", label: "Journey", icon: <History size={15} className="text-brand" aria-hidden /> },
           ]}
         />
       </PanelHeader>
@@ -583,13 +645,16 @@ function Workspace({
         <TabPanel idPrefix="bottom" id="result" active={bottomTab === "result"} className="h-full">
           {resultBody}
         </TabPanel>
+        <TabPanel idPrefix="bottom" id="journey" active={bottomTab === "journey"} className="h-full">
+          <JourneyPanel challengeId={challenge.id} />
+        </TabPanel>
       </PanelBody>
     </Panel>
   );
 
   return (
     <WorkspaceFrame left={breadcrumb} center={actions}>
-      {wide ? <ResizableWorkspace left={left} editor={editor} bottom={bottom} resultKey={result ? submissionId : null} /> : (
+      {wide ? <ResizableWorkspace left={left} editor={editor} bottom={bottom} resultKey={asking ? "asking" : result ? submissionId : null} /> : (
         <div className="flex flex-col gap-2">
           <div className="max-h-[70vh]">{left}</div>
           {editor}
@@ -609,7 +674,7 @@ function ResizableWorkspace({
   left: ReactNode;
   editor: ReactNode;
   bottom: ReactNode;
-  /** Changes when a new verdict arrives; the Test Result pane then grows so the verdict is readable. */
+  /** Changes when a new verdict (or the prediction question) arrives; the Test Result pane then grows to fit it. */
   resultKey: string | null;
 }) {
   const horizontal = useDefaultLayout({ id: "cq-mission-h" });

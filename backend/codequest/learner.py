@@ -20,6 +20,8 @@ DECAY = 0.8
 RECURRING_THRESHOLD = 1.5
 RECURRING_MIN_ATTEMPTS = 2
 HISTORY = 5
+LOG_CAP = 200               # attempts kept for the portfolio's mistake lanes (the recurring rule uses HISTORY)
+PREDICTION_CAP = 300        # prediction records kept for the portfolio
 MASTERY_MARGIN = 147        # theta - d_med >= 147  <=>  p >= 0.70 on the concept's median mission
 VERIFIED_SCORE = 0.85
 TARGET_SUCCESS = 0.75
@@ -60,6 +62,8 @@ class LearnerState:
     ai_enabled: bool = True   # learner's own preference for AI-worded hints
     profile: dict[str, Any] | None = None   # onboarding answers (goal, time, level); None until onboarded
     roadmap_done: list[str] = field(default_factory=list)   # LeetCode slugs the learner marked done
+    attempt_log: list[dict[str, Any]] = field(default_factory=list)   # {"ref", "mistakes"} per attempt, newest last
+    predictions: list[dict[str, Any]] = field(default_factory=list)   # Predict Before You Run records, newest last
 
     def to_dict(self) -> dict[str, Any]:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
@@ -78,11 +82,19 @@ class LearnerState:
 
 # --------------------------------------------------------------------------- Mistake Memory
 
-def start_attempt(state: LearnerState) -> None:
+def start_attempt(state: LearnerState, ref: str | None = None) -> None:
+    """`ref` names what was attempted (a mission id, or "lc:<slug>" from the LeetCode Companion)."""
     state.mistakes = {k: round(v * DECAY, 4) for k, v in state.mistakes.items()}
     state.history.append([])
     state.history = state.history[-HISTORY:]
+    state.attempt_log.append({"ref": ref or "", "mistakes": []})
+    state.attempt_log = state.attempt_log[-LOG_CAP:]
     state.attempts += 1
+
+
+def record_prediction(state: LearnerState, record: dict[str, Any]) -> None:
+    state.predictions.append(record)
+    state.predictions = state.predictions[-PREDICTION_CAP:]
 
 
 def record_mistakes(state: LearnerState, keys: list[str]) -> list[str]:
@@ -90,11 +102,14 @@ def record_mistakes(state: LearnerState, keys: list[str]) -> list[str]:
     if not state.history:
         start_attempt(state)
     current = state.history[-1]
+    logged = state.attempt_log[-1]["mistakes"] if state.attempt_log else []
     newly: list[str] = []
     for key in keys:
         if key in current:
             continue
         current.append(key)
+        if key not in logged:
+            logged.append(key)
         state.mistakes[key] = round(state.mistakes.get(key, 0.0) + 1.0, 4)
         seen_in = sum(1 for attempt in state.history if key in attempt)
         if (state.mistakes[key] >= RECURRING_THRESHOLD and seen_in >= RECURRING_MIN_ATTEMPTS

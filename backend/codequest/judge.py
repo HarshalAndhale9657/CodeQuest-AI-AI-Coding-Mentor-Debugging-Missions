@@ -11,6 +11,7 @@ from typing import Any
 
 from codequest.analysis import explain
 from codequest.analysis.detectors import Finding, run_detectors
+from codequest.analysis.rules import forbidden_calls
 from codequest.analysis.shape import LABELS, ShapeLabel, classify
 from codequest.compare import DecodeError, decode, encode_args, short_repr, values_equal
 from codequest.content import Challenge, TestCase
@@ -87,6 +88,7 @@ class JudgeResult:
     syntax_error: dict[str, Any] | None = None
     summary: str = ""
     runner: str = ""
+    violations: list[dict[str, Any]] = field(default_factory=list)   # mission rules broken ("without max()")
 
     @property
     def counts(self) -> dict[str, int]:
@@ -112,6 +114,7 @@ class JudgeResult:
             "summary": self.summary,
             "tests": [o.public() for o in self.outcomes],
             "notes": [{"line": f.line, "message": f.message, "key": f.key} for f in self.findings],
+            "rule_violations": [dict(v) for v in self.violations],
             "runner": self.runner,
         }
 
@@ -295,9 +298,22 @@ def judge(challenge: Challenge, code: str, runner: Runner, *, parallel: int = 4)
             o.locals, o.stdout, o.exc_message = {}, "", None
 
     mistakes = fuse_mistakes(findings, outcomes)
-    result = JudgeResult(challenge.id, outcomes, findings, mistakes, runner=runner.name)
+    result = JudgeResult(challenge.id, outcomes, findings, mistakes, runner=runner.name,
+                         violations=forbidden_calls(tree, challenge.forbidden_calls))
     result.summary = _summary(result)
     return result
+
+
+def run_case(challenge: Challenge, code: str, runner: Runner, args: list[Any], expected: Any) -> TestOutcome:
+    """Run the learner's code on one extra (non-test) input and compare on the host, like a visible test."""
+    unordered = bool(challenge.tests) and all(t.compare == "unordered" for t in challenge.tests)
+    test = TestCase(id="extra", visibility="visible", args=args, expected=expected, tags=["typical"],
+                    compare="unordered" if unordered else "exact")
+    request = {"code": code, "function": challenge.function, "args": encode_args(args), "capture_context": False}
+    status, d = _verdict(runner.run(request, Limits(time_limit_s=challenge.time_limit_s)), test)
+    return TestOutcome(test.id, 0, "visible", status, test.tags, test.coarse_category, subtype=d.get("subtype"),
+                       exc_type=d.get("exc_type"), exc_message=d.get("exc_message"), label=d.get("label"),
+                       got=d.get("got"), expected=expected, args=args)
 
 
 def _apply_constant_output_rule(outcomes: list[TestOutcome]) -> None:
@@ -333,6 +349,9 @@ def _explain_outcome(o: TestOutcome, findings: list[Finding], lines: list[str], 
 def _summary(result: JudgeResult) -> str:
     c = result.counts
     total = len(result.outcomes)
+    if result.all_passed and result.violations:
+        calls = ", ".join(dict.fromkeys(f"{v['call']}()" for v in result.violations))
+        return f"All {total} tests passed, but the mission rule is not met: solve it without {calls}."
     if result.all_passed:
         return f"All {total} tests passed, including the hidden ones."
     parts = [f"{c['passed']}/{total} passed"]

@@ -15,6 +15,8 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from codequest.analysis.rules import RULE_RE, forbidden_calls
+
 CONTENT_DIR = Path(__file__).resolve().parents[2] / "content" / "challenges"
 
 TEST_TAGS = {
@@ -104,6 +106,7 @@ class Challenge(BaseModel):
     small_inputs: dict[str, InputSpec] | None = None
     time_limit_s: float = Field(default=2.0, gt=0, le=5)
     max_changed_lines: int | None = None
+    forbidden_calls: list[str] = Field(default_factory=list, description="Calls the mission forbids, e.g. max or .sort")
 
     @field_validator("function")
     @classmethod
@@ -111,6 +114,14 @@ class Challenge(BaseModel):
         if not v.isidentifier() or keyword.iskeyword(v):
             raise ValueError("function must be a valid Python identifier")
         return v
+
+    @field_validator("forbidden_calls")
+    @classmethod
+    def _rule_names(cls, v: list[str]) -> list[str]:
+        bad = [r for r in v if not RULE_RE.match(r)]
+        if bad:
+            raise ValueError(f"forbidden_calls takes names like max or .sort, not {bad}")
+        return list(dict.fromkeys(v))
 
     @model_validator(mode="after")
     def _check(self) -> "Challenge":
@@ -129,6 +140,10 @@ class Challenge(BaseModel):
             names = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
             if self.function not in names:
                 raise ValueError(f"{self.id}: code must define {self.function}()")
+        for ref in self.references:
+            used = forbidden_calls(ast.parse(ref), self.forbidden_calls)
+            if used:
+                raise ValueError(f"{self.id}: a reference uses a forbidden call: {used[0]['call']}")
         if self.type == "debug" and self.max_changed_lines is None:
             raise ValueError(f"{self.id}: debug missions need max_changed_lines")
         return self
@@ -161,6 +176,7 @@ def public_challenge(ch: Challenge) -> dict[str, Any]:
         "edge_cases": ch.edge_cases,
         "starter_code": ch.starter_code,
         "max_changed_lines": ch.max_changed_lines,
+        "forbidden_calls": ch.forbidden_calls,
         "visible_tests": [
             {"id": t.id, "args": t.args, "expected": t.expected, "tags": t.tags} for t in ch.visible_tests
         ],

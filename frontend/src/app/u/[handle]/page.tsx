@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, BadgeCheck, Brain, Bug, Check, CheckCircle2, Keyboard, Lightbulb, Link2, ListChecks, Map as MapIcon, Trophy } from "lucide-react";
+import { ArrowRight, BadgeCheck, Bug, Check, CheckCircle2, Keyboard, Lightbulb, Link2, ListChecks, Map as MapIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
+import { GrowthSection } from "@/components/signals/growth";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { cx } from "@/components/ui/cx";
@@ -14,7 +15,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/ui/states";
 import { DifficultyLabel, Tag } from "@/components/ui/tag";
 import { Avatar } from "@/components/user-menu";
 import { ApiError, api, getToken } from "@/lib/api";
-import { conceptLabel, mistakeLabel } from "@/lib/format";
+import { conceptLabel } from "@/lib/format";
 import type { ImportPlatform, ImportRow, Me, Portfolio, SkillBand } from "@/lib/types";
 
 export default function PortfolioPage() {
@@ -68,11 +69,11 @@ function PortfolioView() {
       <div className="min-w-0 space-y-4">
         <StatsCard p={p} />
         <ConceptsCard concepts={p.verified.all_concepts} />
+        {p.verified.growth && <GrowthSection growth={p.verified.growth} own={own} />}
         <div className="grid gap-4 xl:grid-cols-2">
           <ImportCard platform="leetcode" row={p.imports.leetcode} own={own} handle={p.handle} />
           <ImportCard platform="codeforces" row={p.imports.codeforces} own={own} handle={p.handle} />
         </div>
-        <MistakesCard p={p} />
         <SolvedCard p={p} />
       </div>
     </div>
@@ -338,40 +339,6 @@ function ImportCard({ platform, row, own, handle }: { platform: ImportPlatform; 
         <p role="alert" className="mt-2 text-xs text-red">
           {sync.error instanceof ApiError ? sync.error.message : "Could not start the import."}
         </p>
-      )}
-    </Card>
-  );
-}
-
-function MistakesCard({ p }: { p: Portfolio }) {
-  const rows = p.verified.mistakes;
-  return (
-    <Card className="pb-4">
-      <CardTitle icon={<Brain size={18} className="text-brand" aria-hidden />}>Mistake timeline</CardTitle>
-      {rows.length === 0 ? (
-        <EmptyState title="A clean slate" text="No mistakes recorded yet." />
-      ) : (
-        <ol className="mt-3 px-2">
-          {rows.map((r, i) => (
-            <li key={r.key} className={cx("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lc px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_120px_90px]", i % 2 === 0 && "bg-row-alt")}>
-              <span className="truncate text-sm text-text-1">{mistakeLabel(r.key)}</span>
-              <span className="hidden text-xs tabular-nums text-text-3 sm:block">
-                {r.first_seen ? `attempt ${r.first_seen}${r.last_seen && r.last_seen !== r.first_seen ? `–${r.last_seen}` : ""}` : "–"} · {r.times}×
-              </span>
-              <span className="text-right">
-                {r.beaten ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green">
-                    <Trophy size={12} aria-hidden /> Beaten
-                  </span>
-                ) : r.recurring ? (
-                  <span className="text-xs font-medium text-red">Recurring</span>
-                ) : (
-                  <span className="text-xs text-text-3">Seen</span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
       )}
     </Card>
   );

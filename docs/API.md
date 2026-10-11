@@ -108,6 +108,33 @@ Unlocks the next level. Requires a judged, failing submission; later levels need
 
 ### `GET /api/me` · web auth
 `{user, skills: [{concept, band, attempts, verified, p_median}], mistakes: {recurring, beaten, strength, history}, solved, next_up, profile, onboarded}`.
+
+---
+
+## Learning signals
+
+Four signals that go beyond pass/fail. Design and evidence: [MENTOR_ENGINE.md §10](MENTOR_ENGINE.md#10-learning-signals) and [research/learning-signals-evidence.md](research/learning-signals-evidence.md).
+
+### Predict Before You Run
+`GET /api/challenges/{id}` also returns `prediction: {prompt_id, call} | null` (the attempt's one question; `null` once answered or skipped) and `forbidden_calls` (e.g. `["max"]`).
+`POST /api/submissions` accepts an optional `prediction: {prompt_id: 12 hex, answer?: str ≤200, crash?: bool, skipped?: bool}`; an empty answer without `crash`/`skipped` is a 422. Only the first prediction of an attempt counts, and an unknown `prompt_id` is ignored (the submission still runs).
+The judged result then carries `prediction: {state, call, traced, predicted, actual, expected, message}` where `state` is `aligned | slip | misconception | lucky | lost` (or `unrun` when a syntax error stopped the code; the question is asked again). `expected` is `null` unless the learner already knew it or their code produced it.
+
+### Pass review
+- `rule_violations: [{call, line}]`: a passing submission that uses a forbidden call. Tests pass, but the attempt stays open (not solved) and the hint endpoint answers 409 with the rule.
+- `robustness`: `null` (no search domain, or not a pass) · `{status: "checking"}` right after the verdict · then `{status: "robust", checked, message}`, `{status: "fragile", checked, failed, counterexample: {call, expected, got, error}, held_back: {concept: elo}, message}` or `{status: "unchecked"}`. Poll `GET /api/submissions/{id}` until it leaves `checking`. A fragile pass keeps the solve but holds back half its Elo gain and its verified credit.
+
+### `GET /api/challenges/{id}/journey?attempt_id=` · web auth
+Replay of the latest attempt with a judged submission (or `attempt_id`). Private: it contains the learner's code.
+`{attempt: {id, created, open, solved} | null, attempts: [{id, created, open, submissions}], steps: [{index, kind, revert_of, passed, total, hidden_passed, hidden_total, failing, error_line, mistakes, delta, change: {added, removed, focused, hunks: [{rows: [{t, a, b, text}]}]}, code}], summary: {submissions, productive, regressions, resubmits, reverts, productive_ratio, focused_share, error_quotient, style}, reflection, agreement}`.
+`kind`: `first | progress | regression | sideways | resubmit | revert | solved`. `style`: `first_try | single | quick_fix | too_short | methodical | exploratory | trial_and_error`.
+
+### `POST /api/challenges/{id}/reflection` · web auth
+`{strategy: "systematic" | "mixed" | "random", note?: str ≤280}` on the latest judged attempt; returns the journey with `agreement: agrees | close | differs`. 409 before any judged submission.
+
+### Portfolio growth
+`GET /api/portfolio/{handle}` adds `verified.growth: {solves: {count, hint_free, first_try, series, rolling, trend}, struggle: [{challenge_id, tier, state, effort, submissions, hints}], lanes: {attempts, lanes: [{key, hits, state}]}, prediction: {total, traced, knew_answer, by_state, by_concept} | null, debugging: {journeys, styles, productive_ratio, error_quotient, self_report}, robustness: {checked, robust, fragile}}`. Aggregates only: no code, inputs or reflection notes.
+
 ---
 
 ## Profile, roadmap and your data

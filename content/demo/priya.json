@@ -1,0 +1,1147 @@
+{
+ "version": 1,
+ "persona": "priya",
+ "attempts": [
+  {
+   "challenge_id": "count_evens",
+   "days_ago": 6.0,
+   "open": false,
+   "abandoned": false,
+   "score": 1.0,
+   "mistakes": [],
+   "failed": 0,
+   "best_hidden": 1.0,
+   "ladder": {
+    "unlocked": 0,
+    "unlocked_at": 0.0,
+    "code_hash_at_unlock": "",
+    "shown": []
+   },
+   "prediction": {
+    "prompt_id": "7036726c3f76",
+    "call": "count_evens([-2, 3])",
+    "answer": "1",
+    "crash": false,
+    "skipped": false,
+    "state": "aligned"
+   },
+   "reflection": null,
+   "submissions": [
+    {
+     "minutes": 0.0,
+     "code": "def count_evens(nums):\n    count = 0\n    for n in nums:\n        if n % 2 == 0:\n            count += 1\n    return count\n",
+     "result": {
+      "challenge_id": "count_evens",
+      "counts": {
+       "passed": 8,
+       "wrong_output": 0,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": true,
+      "syntax_error": null,
+      "summary": "All 8 tests passed, including the hidden ones.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "typical",
+        "subtype": null,
+        "input": "[1, 2, 3, 4]",
+        "expected": "2",
+        "actual": "2",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "empty",
+        "subtype": null,
+        "input": "[]",
+        "expected": "0",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "zero",
+        "subtype": null,
+        "input": "[0]",
+        "expected": "1",
+        "actual": "1",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "tricky values",
+        "explanation": ""
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "typical case",
+        "explanation": ""
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "tricky values",
+        "explanation": ""
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "large input",
+        "explanation": ""
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       }
+      ],
+      "notes": [],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": []
+      },
+      "prediction": {
+       "prompt_id": "7036726c3f76",
+       "call": "count_evens([-2, 3])",
+       "state": "aligned",
+       "traced": true,
+       "predicted": "1",
+       "actual": "1",
+       "expected": "1",
+       "message": "Spot on: you knew exactly what your code would do, and it is right for this input."
+      },
+      "robustness": {
+       "status": "robust",
+       "checked": 83,
+       "message": "CodeQuest also tried 83 small inputs beyond the tests, and your code got every one right."
+      }
+     },
+     "internal": {
+      "findings": [],
+      "mistakes": [],
+      "crash_line": null
+     }
+    }
+   ]
+  },
+  {
+   "challenge_id": "largest",
+   "days_ago": 5.0,
+   "open": false,
+   "abandoned": false,
+   "score": 0.9,
+   "mistakes": [
+    "bad_initial_value"
+   ],
+   "failed": 1,
+   "best_hidden": 1.0,
+   "ladder": {
+    "unlocked": 1,
+    "unlocked_at": 0.0,
+    "code_hash_at_unlock": "",
+    "shown": [
+     {
+      "level": 1,
+      "title": "Where to look",
+      "text": "This is about initial values. Look closely at lines 3-5.",
+      "region": [
+       3,
+       5
+      ],
+      "source": "template"
+     }
+    ]
+   },
+   "prediction": {
+    "prompt_id": "543bd6ef13a7",
+    "call": "largest([-3, -1])",
+    "answer": "0",
+    "crash": false,
+    "skipped": false,
+    "state": "misconception"
+   },
+   "reflection": {
+    "strategy": "systematic",
+    "note": "Hint 1 pointed at my starting value."
+   },
+   "submissions": [
+    {
+     "minutes": 0.0,
+     "code": "def largest(nums):\n    if not nums:\n        return None\n    best = 0\n    for n in nums:\n        if n > best:\n            best = n\n    return best\n",
+     "result": {
+      "challenge_id": "largest",
+      "counts": {
+       "passed": 6,
+       "wrong_output": 2,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": false,
+      "syntax_error": null,
+      "summary": "6/8 passed, 2 wrong output.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "typical",
+        "subtype": null,
+        "input": "[3, 9, 2]",
+        "expected": "9",
+        "actual": "9",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "single",
+        "subtype": null,
+        "input": "[7]",
+        "expected": "7",
+        "actual": "7",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "empty",
+        "subtype": null,
+        "input": "[]",
+        "expected": "None",
+        "actual": "None",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 4: `best` starts at 0, which is wrong if every value is negative (or positive)."
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "tricky values",
+        "explanation": ""
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "boundary",
+        "explanation": ""
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "boundary",
+        "explanation": ""
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 4: `best` starts at 0, which is wrong if every value is negative (or positive)."
+       }
+      ],
+      "notes": [
+       {
+        "line": 4,
+        "message": "`best` starts at 0, which is wrong if every value is negative (or positive).",
+        "key": "bad_initial_value"
+       }
+      ],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": [
+        "bad_initial_value"
+       ]
+      },
+      "prediction": {
+       "prompt_id": "543bd6ef13a7",
+       "call": "largest([-3, -1])",
+       "state": "misconception",
+       "traced": true,
+       "predicted": "0",
+       "actual": "0",
+       "expected": null,
+       "message": "Your code does exactly what you expected, so it matches your plan. But 0 is not the right answer for this input: re-read the task with this case in mind."
+      },
+      "robustness": null
+     },
+     "internal": {
+      "findings": [
+       {
+        "key": "bad_initial_value",
+        "line": 4,
+        "message": "`best` starts at 0, which is wrong if every value is negative (or positive).",
+        "end_line": null,
+        "blank": null
+       }
+      ],
+      "mistakes": [
+       {
+        "key": "bad_initial_value",
+        "evidence": "static+dynamic",
+        "line": 4
+       }
+      ],
+      "crash_line": null
+     }
+    },
+    {
+     "minutes": 7,
+     "code": "def largest(nums):\n    if not nums:\n        return None\n    best = nums[0]\n    for n in nums:\n        if n > best:\n            best = n\n    return best\n",
+     "result": {
+      "challenge_id": "largest",
+      "counts": {
+       "passed": 8,
+       "wrong_output": 0,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": true,
+      "syntax_error": null,
+      "summary": "All 8 tests passed, including the hidden ones.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "typical",
+        "subtype": null,
+        "input": "[3, 9, 2]",
+        "expected": "9",
+        "actual": "9",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "single",
+        "subtype": null,
+        "input": "[7]",
+        "expected": "7",
+        "actual": "7",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "empty",
+        "subtype": null,
+        "input": "[]",
+        "expected": "None",
+        "actual": "None",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "tricky values",
+        "explanation": ""
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "tricky values",
+        "explanation": ""
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "boundary",
+        "explanation": ""
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "boundary",
+        "explanation": ""
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "tricky values",
+        "explanation": ""
+       }
+      ],
+      "notes": [],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": []
+      },
+      "prediction": null,
+      "robustness": {
+       "status": "robust",
+       "checked": 84,
+       "message": "CodeQuest also tried 84 small inputs beyond the tests, and your code got every one right."
+      }
+     },
+     "internal": {
+      "findings": [],
+      "mistakes": [],
+      "crash_line": null
+     }
+    }
+   ]
+  },
+  {
+   "challenge_id": "reverse_words",
+   "days_ago": 3.0,
+   "open": false,
+   "abandoned": false,
+   "score": 1.0,
+   "mistakes": [],
+   "failed": 0,
+   "best_hidden": 1.0,
+   "ladder": {
+    "unlocked": 0,
+    "unlocked_at": 0.0,
+    "code_hash_at_unlock": "",
+    "shown": []
+   },
+   "prediction": {
+    "prompt_id": "da150e4051ee",
+    "call": "reverse_words('a  b')",
+    "answer": "b  a",
+    "crash": false,
+    "skipped": false,
+    "state": "lucky"
+   },
+   "reflection": null,
+   "submissions": [
+    {
+     "minutes": 0.0,
+     "code": "def reverse_words(s):\n    words = s.split()\n    words.reverse()\n    return \" \".join(words)\n",
+     "result": {
+      "challenge_id": "reverse_words",
+      "counts": {
+       "passed": 8,
+       "wrong_output": 0,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": true,
+      "syntax_error": null,
+      "summary": "All 8 tests passed, including the hidden ones.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "typical",
+        "subtype": null,
+        "input": "'the sky is blue'",
+        "expected": "'blue is sky the'",
+        "actual": "'blue is sky the'",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "boundary",
+        "subtype": null,
+        "input": "'  hello world  '",
+        "expected": "'world hello'",
+        "actual": "'world hello'",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "typical",
+        "subtype": null,
+        "input": "'a good   example'",
+        "expected": "'example good a'",
+        "actual": "'example good a'",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "typical case",
+        "explanation": ""
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "large input",
+        "explanation": ""
+       }
+      ],
+      "notes": [],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": []
+      },
+      "prediction": {
+       "prompt_id": "da150e4051ee",
+       "call": "reverse_words('a  b')",
+       "state": "lucky",
+       "traced": false,
+       "predicted": "'b  a'",
+       "actual": "'b a'",
+       "expected": "'b a'",
+       "message": "Your code gets this right ('b a'), but you expected 'b  a'. Work out why it is right before you move on: next time it may not be."
+      },
+      "robustness": {
+       "status": "robust",
+       "checked": 119,
+       "message": "CodeQuest also tried 119 small inputs beyond the tests, and your code got every one right."
+      }
+     },
+     "internal": {
+      "findings": [],
+      "mistakes": [],
+      "crash_line": null
+     }
+    }
+   ]
+  },
+  {
+   "challenge_id": "total",
+   "days_ago": 1.0,
+   "open": false,
+   "abandoned": true,
+   "score": 0.55,
+   "mistakes": [
+    "off_by_one"
+   ],
+   "failed": 3,
+   "best_hidden": 0.2,
+   "ladder": {
+    "unlocked": 2,
+    "unlocked_at": 0.0,
+    "code_hash_at_unlock": "",
+    "shown": [
+     {
+      "level": 1,
+      "title": "Where to look",
+      "text": "This is about loop boundaries. Look closely at lines 2-4.",
+      "region": [
+       2,
+       4
+      ],
+      "source": "template"
+     },
+     {
+      "level": 2,
+      "title": "What is going wrong",
+      "text": "Some inputs make your code give a different result than expected. For input [1] the answer should be 1, but your code returned 0.",
+      "region": null,
+      "source": "template"
+     }
+    ]
+   },
+   "prediction": {
+    "prompt_id": "1f22bd2e8810",
+    "call": "total([1, 3])",
+    "answer": "4",
+    "crash": false,
+    "skipped": false,
+    "state": "slip"
+   },
+   "reflection": null,
+   "submissions": [
+    {
+     "minutes": 0.0,
+     "code": "def total(nums):\n    result = 0\n    for i in range(len(nums) - 1):\n        result += nums[i]\n    return result\n",
+     "result": {
+      "challenge_id": "total",
+      "counts": {
+       "passed": 2,
+       "wrong_output": 6,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": false,
+      "syntax_error": null,
+      "summary": "2/8 passed, 6 wrong output.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "wrong_output",
+        "category": "typical",
+        "subtype": null,
+        "input": "[1, 2, 3]",
+        "expected": "6",
+        "actual": "3",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": "skipped_end_element",
+        "stdout": "",
+        "explanation": "It looks like the first or last element was skipped. Compare your result with the expected one: where do they first differ?"
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "wrong_output",
+        "category": "single",
+        "subtype": null,
+        "input": "[5]",
+        "expected": "5",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": "skipped_end_element",
+        "stdout": "",
+        "explanation": "It looks like the first or last element was skipped. Compare your result with the expected one: where do they first differ?"
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "empty",
+        "subtype": null,
+        "input": "[]",
+        "expected": "0",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "boundary",
+        "explanation": "On a hidden boundary test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "large input",
+        "explanation": "On a hidden large input test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       }
+      ],
+      "notes": [
+       {
+        "line": 3,
+        "message": "`range(len(...) - 1)` stops before the last index.",
+        "key": "off_by_one"
+       }
+      ],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": [
+        "off_by_one"
+       ]
+      },
+      "prediction": {
+       "prompt_id": "1f22bd2e8810",
+       "call": "total([1, 3])",
+       "state": "slip",
+       "traced": false,
+       "predicted": "4",
+       "actual": "1",
+       "expected": "4",
+       "message": "You know the answer is 4, but your code returns 1. Your understanding is fine; the code doesn't do what you think. Trace it line by line with this input."
+      },
+      "robustness": null
+     },
+     "internal": {
+      "findings": [
+       {
+        "key": "off_by_one",
+        "line": 3,
+        "message": "`range(len(...) - 1)` stops before the last index.",
+        "end_line": null,
+        "blank": [
+         3,
+         19,
+         32
+        ]
+       }
+      ],
+      "mistakes": [
+       {
+        "key": "off_by_one",
+        "evidence": "static+dynamic",
+        "line": 3
+       }
+      ],
+      "crash_line": null
+     }
+    },
+    {
+     "minutes": 4,
+     "code": "def total(nums):\n    result = 0\n    for i in range(1, len(nums)):\n        result += nums[i]\n    return result\n",
+     "result": {
+      "challenge_id": "total",
+      "counts": {
+       "passed": 2,
+       "wrong_output": 6,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": false,
+      "syntax_error": null,
+      "summary": "2/8 passed, 6 wrong output.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "wrong_output",
+        "category": "typical",
+        "subtype": null,
+        "input": "[1, 2, 3]",
+        "expected": "6",
+        "actual": "5",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": "off_by_one_number",
+        "stdout": "",
+        "explanation": "Your answer is off by exactly one. Compare your result with the expected one: where do they first differ?"
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "wrong_output",
+        "category": "single",
+        "subtype": null,
+        "input": "[5]",
+        "expected": "5",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": "skipped_end_element",
+        "stdout": "",
+        "explanation": "It looks like the first or last element was skipped. Compare your result with the expected one: where do they first differ?"
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "empty",
+        "subtype": null,
+        "input": "[]",
+        "expected": "0",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. Try inputs you haven't tested yet, especially unusual ones."
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "boundary",
+        "explanation": "On a hidden boundary test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. Try inputs you haven't tested yet, especially unusual ones."
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. Try inputs you haven't tested yet, especially unusual ones."
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "large input",
+        "explanation": "On a hidden large input test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. Try inputs you haven't tested yet, especially unusual ones."
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       }
+      ],
+      "notes": [],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": []
+      },
+      "prediction": null,
+      "robustness": null
+     },
+     "internal": {
+      "findings": [],
+      "mistakes": [],
+      "crash_line": null
+     }
+    },
+    {
+     "minutes": 9,
+     "code": "def total(nums):\n    result = 0\n    for i in range(len(nums) - 1):\n        result += nums[i]\n    return result\n",
+     "result": {
+      "challenge_id": "total",
+      "counts": {
+       "passed": 2,
+       "wrong_output": 6,
+       "runtime_error": 0,
+       "timeout": 0
+      },
+      "all_passed": false,
+      "syntax_error": null,
+      "summary": "2/8 passed, 6 wrong output.",
+      "tests": [
+       {
+        "test_id": "v1",
+        "index": 1,
+        "visibility": "visible",
+        "status": "wrong_output",
+        "category": "typical",
+        "subtype": null,
+        "input": "[1, 2, 3]",
+        "expected": "6",
+        "actual": "3",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": "skipped_end_element",
+        "stdout": "",
+        "explanation": "It looks like the first or last element was skipped. Compare your result with the expected one: where do they first differ?"
+       },
+       {
+        "test_id": "v2",
+        "index": 2,
+        "visibility": "visible",
+        "status": "wrong_output",
+        "category": "single",
+        "subtype": null,
+        "input": "[5]",
+        "expected": "5",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": "skipped_end_element",
+        "stdout": "",
+        "explanation": "It looks like the first or last element was skipped. Compare your result with the expected one: where do they first differ?"
+       },
+       {
+        "test_id": "v3",
+        "index": 3,
+        "visibility": "visible",
+        "status": "passed",
+        "category": "empty",
+        "subtype": null,
+        "input": "[]",
+        "expected": "0",
+        "actual": "0",
+        "exception_type": null,
+        "raw_message": null,
+        "line": null,
+        "locals": {},
+        "label": null,
+        "stdout": "",
+        "explanation": ""
+       },
+       {
+        "test_id": "h1",
+        "index": 4,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h2",
+        "index": 5,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "boundary",
+        "explanation": "On a hidden boundary test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h3",
+        "index": 6,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "tricky values",
+        "explanation": "On a hidden tricky values test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h4",
+        "index": 7,
+        "visibility": "hidden",
+        "status": "wrong_output",
+        "category": "large input",
+        "explanation": "On a hidden large input test your code returned a wrong answer. Hidden tests check that your solution works in general, not just on the examples, so their data stays private. A check of your code found something worth looking at on line 3: `range(len(...) - 1)` stops before the last index."
+       },
+       {
+        "test_id": "h5",
+        "index": 8,
+        "visibility": "hidden",
+        "status": "passed",
+        "category": "edge case",
+        "explanation": ""
+       }
+      ],
+      "notes": [
+       {
+        "line": 3,
+        "message": "`range(len(...) - 1)` stops before the last index.",
+        "key": "off_by_one"
+       }
+      ],
+      "rule_violations": [],
+      "runner": "local-dev (not sandboxed)",
+      "events": {
+       "mistakes": [
+        "off_by_one"
+       ]
+      },
+      "prediction": null,
+      "robustness": null
+     },
+     "internal": {
+      "findings": [
+       {
+        "key": "off_by_one",
+        "line": 3,
+        "message": "`range(len(...) - 1)` stops before the last index.",
+        "end_line": null,
+        "blank": [
+         3,
+         19,
+         32
+        ]
+       }
+      ],
+      "mistakes": [
+       {
+        "key": "off_by_one",
+        "evidence": "static+dynamic",
+        "line": 3
+       }
+      ],
+      "crash_line": null
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -68,10 +68,21 @@ def candidate_inputs(ch: Challenge) -> list[list[Any]]:
     return [c for c in combos if repr(c) not in excluded][:MAX_CANDIDATES]
 
 
+@dataclass(frozen=True)
+class ProbeReport:
+    """One bounded search. `complete` is False when the batch did not finish, so silence proves nothing."""
+
+    checked: int
+    counterexample: Counterexample | None    # the first (near-minimal) failing input
+    complete: bool
+    failed: int = 0                          # how many checked inputs the code got wrong
+
+
 _reference_cache: dict[str, Any] = {}
 
 
-def _reference_fn(ch: Challenge):
+def reference_fn(ch: Challenge):
+    """The mission's first reference solution, compiled once on the host (trusted content)."""
     fn = _reference_cache.get(ch.id)
     if fn is None:
         namespace: dict[str, Any] = {}
@@ -81,33 +92,55 @@ def _reference_fn(ch: Challenge):
     return fn
 
 
-def find_counterexample(ch: Challenge, code: str, runner: Runner) -> Counterexample | None:
-    candidates = candidate_inputs(ch)
-    if not candidates:
-        return None
-    reference = _reference_fn(ch)
-    expected: list[Any] = []
-    usable: list[list[Any]] = []
-    for args in candidates:
+def domain(ch: Challenge) -> list[tuple[list[Any], Any]]:
+    """Generated inputs the reference accepts, each with the reference's answer. Never a test input."""
+    reference = reference_fn(ch) if ch.small_inputs else None
+    out: list[tuple[list[Any], Any]] = []
+    for args in candidate_inputs(ch):
         try:
-            expected.append(reference(*copy.deepcopy(args)))
-            usable.append(args)
+            out.append((args, reference(*copy.deepcopy(args))))  # type: ignore[misc]
         except Exception:  # noqa: BLE001 - input outside the reference's domain: skip it
             continue
-    request = {"code": code, "function": ch.function, "batch": [encode_args(a) for a in usable]}
+    return out
+
+
+def probe(ch: Challenge, code: str, runner: Runner) -> ProbeReport | None:
+    """Search the small-input domain for an input the code gets wrong. None if the mission has no domain."""
+    cases = domain(ch)
+    if not cases:
+        return None
+    request = {"code": code, "function": ch.function, "batch": [encode_args(args) for args, _ in cases]}
     raw = runner.run(request, Limits(time_limit_s=PROBE_TIME_S))
     payload = raw.payload or {}
     if payload.get("kind") != "batch":
-        return None
-    for args, exp, item in zip(usable, expected, payload.get("results") or []):
+        return ProbeReport(0, None, complete=False)
+    results = payload.get("results") or []
+    first: Counterexample | None = None
+    failed = 0
+    for (args, exp), item in zip(cases, results):
         kind = item.get("kind") if isinstance(item, dict) else None
+        found: Counterexample | None = None
         if kind == "ok":
             try:
                 got = decode(item.get("value"))
             except DecodeError:
                 continue
             if not values_equal(got, exp):
-                return Counterexample(args, exp, got=got)
+                found = Counterexample(args, exp, got=got)
         elif kind == "exception":
-            return Counterexample(args, exp, error=str(item.get("exc_type") or "an error"))
-    return None
+            found = Counterexample(args, exp, error=str(item.get("exc_type") or "an error"))
+        if found is not None:
+            failed += 1
+            first = first or found
+    checked = min(len(cases), len(results))
+    if payload.get("timed_out") and checked < len(cases):
+        # The batch shares one small budget, so the input after the last answered one is the one that hung.
+        args, exp = cases[checked]
+        hung = Counterexample(args, exp, error="no answer in time (an endless loop?)")
+        first, checked, failed = first or hung, checked + 1, failed + 1
+    return ProbeReport(checked, first, complete=first is not None or checked == len(cases), failed=failed)
+
+
+def find_counterexample(ch: Challenge, code: str, runner: Runner) -> Counterexample | None:
+    report = probe(ch, code, runner)
+    return report.counterexample if report else None

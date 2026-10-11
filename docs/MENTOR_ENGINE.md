@@ -254,3 +254,28 @@ Exactly one off-by-one is on record, and it is the latest attempt. Her next off-
 | Transparency | AI-worded hints carry an *AI-worded* tag; `source` is `template`, `fallback` or `ai` |
 
 The LeetCode Companion's tutor chat uses the same budget, switch and rejection counter, with its own output guard. See [EXTENSION.md §7](EXTENSION.md#7-how-the-tutor-stays-honest).
+
+## 10. Learning signals
+
+Pass/fail says whether code works, not whether the learner understands it. Four deterministic signals fill that gap. Evidence and citations: [research/learning-signals-evidence.md](research/learning-signals-evidence.md).
+
+### Predict Before You Run (`predict.py`)
+Before the first submission of an attempt the learner predicts what **their own** code returns for one input. The input comes from the counterexample finder's small-input domain, so it is never a visible test (its expected output is on screen) nor a hidden one (it would leak). Prompts are ranked to hit the mission's trap (an all-negative list for `bad_initial_value`, a list whose last element matters for `off_by_one`) and stay small enough to trace by hand; the choice is seeded by mission and attempt number, so a mission's first question is the same for everyone. One extra sandbox run gives the code's answer A; the reference gives E; the prediction is P:
+
+| | P = A (read the code right) | P ≠ A (code surprised you) |
+|---|---|---|
+| **P = E** (knew the answer) | `aligned` | `slip`: the code doesn't do what you think |
+| **P ≠ E** | `misconception`: the plan itself is wrong | `lucky` (A = E: passed, not as predicted) or `lost` |
+
+The correct answer is shown only when the learner already knew it or their code produced it; otherwise it would be a counterexample handed out before the hint ladder allows one. Predictions stay out of the Elo estimate; the portfolio reports tracing accuracy per concept and flags concepts with 2+ lucky passes, or skill bands that outrun tracing.
+
+### Pass review (`analysis/probe.py`, `analysis/rules.py`)
+- **Fragile passes.** After every pass, on its own worker so verdicts never wait, the same bounded search that powers hint H2 runs over inputs beyond the tests (small-scope hypothesis). A counterexample marks the pass fragile: the solve stands, but half its Elo gain and its verified credit are held back, so mastery only counts code that survives inputs the tests missed. Example: counting each bracket type separately passes all 8 `valid_brackets` tests but accepts `"([)]"`.
+- **Mission rules.** `forbidden_calls` (e.g. `largest`: no `max()`) are checked on the AST. Passing code that breaks a rule is not a solve.
+
+### Debug Journey (`journey.py`)
+Every judged submission of an attempt becomes a step: a line diff against the previous one and a label from the results (`progress`, `regression`, `sideways`) or from code identity via the AST (`resubmit` ignores comments and spacing, `revert` returns to an earlier version). The summary labels the style (`methodical`: small productive steps; `trial_and_error`: repeats and reverts without progress) and reports an Error Quotient adapted from Jadud (2006) to test results: per consecutive pair +2 both fail, +3 same failing tests, +3 same crash line, +1 same edit spot, divided by 9 and averaged. A reflection prompt asks how the learner debugged and compares the answer with the data.
+
+### Growth analytics (`insights.py`)
+The portfolio adds hint-free and first-try rates (rolling, with a trend), a struggle map of every mission by tier, mistake lanes over the full attempt log (recurring = an active "boss", beaten = defeated), the prediction matrix by concept, debugging styles and robust-solve counts. No radar chart: radial charts were the least effective design in comparative tests, so skills stay as bars.
+

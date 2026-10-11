@@ -5,6 +5,7 @@ title: "Find the Largest"
 concepts: {primary: conditionals, secondary: [loops, lists]}
 traps: [bad_initial_value, empty_input]
 function: largest
+forbidden_calls: [max]
 description: |
   Return the largest number in the list without using max(). For an empty list, return None.
 edge_cases:

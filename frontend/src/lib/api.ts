@@ -6,11 +6,14 @@ import type {
   ChallengeSummary,
   HintResponse,
   ImportPlatform,
+  Journey,
   Me,
   Portfolio,
+  PredictionInput,
   ProfileInput,
   ProfileView,
   Roadmap,
+  SelfReport,
   SubmissionView,
   TypingDrills,
   TypingRunInput,
@@ -100,11 +103,20 @@ export const api = {
   health: () => request<{ status: string; runner: string; sandboxed: boolean; missions: number }>("/api/health"),
   challenges: () => request<ChallengeSummary[]>("/api/challenges"),
   challenge: (id: string) => request<ChallengeDetail>(`/api/challenges/${encodeURIComponent(id)}`),
-  submit: (challengeId: string, code: string) =>
+  submit: (challengeId: string, code: string, prediction?: PredictionInput) =>
     request<{ submission_id: string; status: string; hidden_test_count: number; visible_test_count: number }>(
       "/api/submissions",
-      { method: "POST", body: JSON.stringify({ challenge_id: challengeId, code }) },
+      { method: "POST", body: JSON.stringify({ challenge_id: challengeId, code, prediction }) },
     ),
+  journey: (challengeId: string, attemptId?: string) =>
+    request<Journey>(
+      `/api/challenges/${encodeURIComponent(challengeId)}/journey${attemptId ? `?attempt_id=${encodeURIComponent(attemptId)}` : ""}`,
+    ),
+  reflect: (challengeId: string, strategy: SelfReport, note?: string) =>
+    request<Journey>(`/api/challenges/${encodeURIComponent(challengeId)}/reflection`, {
+      method: "POST",
+      body: JSON.stringify({ strategy, note: note?.trim() || undefined }),
+    }),
   submission: (id: string) => request<SubmissionView>(`/api/submissions/${encodeURIComponent(id)}`),
   hint: (challengeId: string) =>
     request<HintResponse>(`/api/challenges/${encodeURIComponent(challengeId)}/hint`, { method: "POST" }),

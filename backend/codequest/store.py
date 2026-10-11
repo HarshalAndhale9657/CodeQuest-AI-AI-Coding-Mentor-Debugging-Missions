@@ -104,10 +104,12 @@ class Store:
     def _migrate(self) -> None:
         """Additive, idempotent column migrations for databases created by older versions."""
         with self._lock:
-            columns = {r["name"] for r in self._db.execute("PRAGMA table_info(typing_results)").fetchall()}
-            for name, kind in (("syntax_accuracy", "REAL"), ("chars", "INTEGER")):
-                if name not in columns:
-                    self._db.execute(f"ALTER TABLE typing_results ADD COLUMN {name} {kind}")
+            for table, added in (("typing_results", (("syntax_accuracy", "REAL"), ("chars", "INTEGER"))),
+                                 ("attempts", (("prediction", "TEXT"), ("reflection", "TEXT")))):
+                columns = {r["name"] for r in self._db.execute(f"PRAGMA table_info({table})").fetchall()}
+                for name, kind in added:
+                    if name not in columns:
+                        self._db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
 
     # ------------------------------------------------------------------ helpers
     def _one(self, sql: str, args: tuple = ()) -> dict[str, Any] | None:
@@ -155,7 +157,7 @@ class Store:
                 raise
 
     def user_submissions(self, user_id: str) -> list[dict[str, Any]]:
-        return self._all("SELECT id, challenge_id, code, status, result, created FROM submissions "
+        return self._all("SELECT id, attempt_id, challenge_id, code, status, result, created FROM submissions "
                          "WHERE user_id = ? ORDER BY created", (user_id,))
 
     def passing_submissions(self, user_id: str) -> list[dict[str, Any]]:
@@ -205,13 +207,35 @@ class Store:
         assert attempt is not None
         return attempt
 
+    def latest_attempt(self, user_id: str, challenge_id: str) -> dict[str, Any] | None:
+        return self._one("SELECT * FROM attempts WHERE user_id = ? AND challenge_id = ? "
+                         "ORDER BY created DESC LIMIT 1", (user_id, challenge_id))
+
+    def challenge_attempts(self, user_id: str, challenge_id: str) -> list[dict[str, Any]]:
+        """Every attempt at one mission, newest first, with its number of judged submissions."""
+        return self._all("SELECT a.*, (SELECT COUNT(*) FROM submissions s WHERE s.attempt_id = a.id "
+                         "AND s.status = 'done') AS judged FROM attempts a WHERE a.user_id = ? AND a.challenge_id = ? "
+                         "ORDER BY a.created DESC", (user_id, challenge_id))
+
     def update_attempt(self, attempt_id: str, **fields: Any) -> None:
-        allowed = {"open", "ladder", "failed", "best_hidden"}
+        allowed = {"open", "ladder", "failed", "best_hidden", "prediction", "reflection"}
+        encoded = {"ladder", "prediction", "reflection"}
         if not fields or set(fields) - allowed:
             raise ValueError("invalid attempt fields")
         sets = ", ".join(f"{k} = ?" for k in fields)
-        values = tuple(json.dumps(v) if k == "ladder" else v for k, v in fields.items())
+        values = tuple(json.dumps(v) if k in encoded and v is not None else v for k, v in fields.items())
         self._exec(f"UPDATE attempts SET {sets} WHERE id = ?", (*values, attempt_id))
+
+    def import_attempt(self, user_id: str, challenge_id: str, *, open_: bool, ladder: dict[str, Any], failed: int,
+                       best_hidden: float, created: float, prediction: dict[str, Any] | None = None,
+                       reflection: dict[str, Any] | None = None) -> str:
+        """Insert a finished attempt with its own timestamp (demo seeds and data imports)."""
+        attempt_id = uuid.uuid4().hex
+        self._exec("INSERT INTO attempts (id, user_id, challenge_id, open, ladder, failed, best_hidden, created, "
+                   "prediction, reflection) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (attempt_id, user_id, challenge_id, int(open_), json.dumps(ladder), failed, best_hidden, created,
+                    json.dumps(prediction) if prediction else None, json.dumps(reflection) if reflection else None))
+        return attempt_id
 
     # ------------------------------------------------------------------ submissions
     def create_submission(self, user_id: str, attempt_id: str, challenge_id: str, code: str) -> str:
@@ -225,6 +249,23 @@ class Store:
         self._exec("UPDATE submissions SET status = ?, result = ?, internal = ? WHERE id = ?",
                    (status, json.dumps(result) if result is not None else None,
                     json.dumps(internal) if internal is not None else None, sid))
+
+    def import_submission(self, user_id: str, attempt_id: str, challenge_id: str, code: str,
+                          result: dict[str, Any], internal: dict[str, Any] | None, created: float) -> str:
+        sid = uuid.uuid4().hex
+        self._exec("INSERT INTO submissions (id, user_id, attempt_id, challenge_id, code, status, result, internal, "
+                   "created) VALUES (?, ?, ?, ?, ?, 'done', ?, ?, ?)",
+                   (sid, user_id, attempt_id, challenge_id, code, json.dumps(result),
+                    json.dumps(internal) if internal is not None else None, created))
+        return sid
+
+    def update_result(self, sid: str, result: dict[str, Any]) -> None:
+        """Replace a finished submission's public result (e.g. when the robustness search completes)."""
+        self._exec("UPDATE submissions SET result = ? WHERE id = ?", (json.dumps(result), sid))
+
+    def attempt_submissions(self, attempt_id: str) -> list[dict[str, Any]]:
+        return self._all("SELECT id, code, status, result, created FROM submissions WHERE attempt_id = ? "
+                         "ORDER BY created", (attempt_id,))
 
     def set_status(self, sid: str, status: str) -> None:
         self._exec("UPDATE submissions SET status = ? WHERE id = ?", (status, sid))

@@ -49,10 +49,169 @@ export interface ChallengeDetail {
   edge_cases: string[];
   starter_code: string;
   max_changed_lines: number | null;
+  /** Calls the mission forbids, e.g. ["max"] or [".sort"]. */
+  forbidden_calls: string[];
   visible_tests: VisibleTestSpec[];
   hidden_test_count: number;
   max_hint_level: number;
   hints: HintState;
+  /** This attempt's Predict Before You Run question; null once answered or skipped. */
+  prediction: PredictionPrompt | null;
+}
+
+/* ---------------------------------------------------------------- learning signals */
+
+export interface PredictionPrompt {
+  prompt_id: string;
+  call: string;
+}
+
+export interface PredictionInput {
+  prompt_id: string;
+  answer?: string;
+  crash?: boolean;
+  skipped?: boolean;
+}
+
+/** P = prediction, A = what the code returned, E = the correct answer. */
+export type PredictionState = "aligned" | "slip" | "misconception" | "lucky" | "lost";
+
+export type PredictionResult =
+  | {
+      state: PredictionState;
+      prompt_id: string;
+      call: string;
+      traced: boolean;
+      predicted: string;
+      actual: string;
+      /** Only shown when the learner already knows it (slip) or their code produced it. */
+      expected: string | null;
+      message: string;
+    }
+  | { state: "unrun"; prompt_id: string; call: string; message: string };
+
+export type Robustness =
+  | { status: "checking" }
+  | { status: "unchecked" }
+  | { status: "robust"; checked: number; message: string }
+  | {
+      status: "fragile";
+      checked: number;
+      failed: number;
+      counterexample: { call: string; expected: string; got: string | null; error: string | null };
+      message: string;
+    };
+
+export interface RuleViolation {
+  call: string;
+  line: number;
+}
+
+export type StepKind = "first" | "progress" | "regression" | "sideways" | "resubmit" | "revert" | "solved";
+
+export interface DiffRow {
+  t: " " | "+" | "-";
+  a: number | null;
+  b: number | null;
+  text: string;
+}
+
+export interface JourneyStep {
+  index: number;
+  submission_id: string;
+  created: number;
+  kind: StepKind;
+  revert_of: number | null;
+  passed: number;
+  total: number;
+  hidden_passed: number;
+  hidden_total: number;
+  all_passed: boolean;
+  syntax_error: boolean;
+  failing: string[];
+  error_line: number | null;
+  mistakes: string[];
+  delta: number | null;
+  change: { added: number; removed: number; focused: boolean; hunks: { rows: DiffRow[] }[]; truncated: boolean } | null;
+  code: string;
+}
+
+export type JourneyStyle = "first_try" | "single" | "quick_fix" | "too_short" | "methodical" | "exploratory" | "trial_and_error";
+export type SelfReport = "systematic" | "mixed" | "random";
+export type Agreement = "agrees" | "close" | "differs";
+
+export interface JourneySummary {
+  submissions: number;
+  solved: boolean;
+  productive: number;
+  regressions: number;
+  resubmits: number;
+  reverts: number;
+  productive_ratio: number | null;
+  focused_share: number | null;
+  error_quotient: number | null;
+  style: JourneyStyle | null;
+}
+
+export interface Journey {
+  attempt: { id: string; created: number; open: boolean; solved: boolean } | null;
+  attempts: { id: string; created: number; open: boolean; submissions: number }[];
+  steps: JourneyStep[];
+  summary: JourneySummary | null;
+  reflection: { strategy: SelfReport; note: string | null; t: number } | null;
+  agreement: Agreement | null;
+}
+
+export interface Growth {
+  solves: {
+    count: number;
+    hint_free: number;
+    first_try: number;
+    series: {
+      challenge_id: string;
+      title: string;
+      tier: number;
+      type: "build" | "debug";
+      t: number;
+      hints: number;
+      submissions: number;
+      hint_free: boolean;
+      first_try: boolean;
+      robust: boolean | null;
+    }[];
+    rolling: { n: number; hint_free_rate: number; first_try_rate: number }[];
+    trend: "up" | "down" | "steady" | null;
+  };
+  struggle: {
+    challenge_id: string;
+    title: string;
+    tier: number;
+    type: "build" | "debug";
+    state: "solved" | "stuck" | "untouched";
+    effort: "clean" | "worked" | "hard" | null;
+    submissions: number;
+    hints: number;
+  }[];
+  lanes: {
+    attempts: { n: number; number: number; ref: string; title: string }[];
+    lanes: { key: string; hits: number[]; state: "recurring" | "seen" | "beaten" }[];
+  };
+  prediction: {
+    total: number;
+    traced: number;
+    knew_answer: number;
+    by_state: Record<PredictionState, number>;
+    by_concept: { concept: string; total: number; traced: number; lucky: number; flag: "lucky_passes" | "untraced_skill" | null }[];
+  } | null;
+  debugging: {
+    journeys: number;
+    styles: Partial<Record<JourneyStyle, number>>;
+    series: { challenge_id: string; title: string; style: JourneyStyle; productive_ratio: number | null; error_quotient: number | null; t: number }[];
+    productive_ratio: number | null;
+    error_quotient: number | null;
+    self_report: Partial<Record<Agreement, number>>;
+  };
+  robustness: { checked: number; robust: number; fragile: number };
 }
 
 export interface VisibleTestResult {
@@ -119,8 +278,13 @@ export interface JudgeResult {
   summary: string;
   tests: TestResult[];
   notes: { line: number; message: string; key: string }[];
+  /** Mission rules the passing code breaks ("without max()"): the attempt is not complete. */
+  rule_violations?: RuleViolation[];
   runner: string;
   events: SubmissionEvents;
+  prediction?: PredictionResult | null;
+  /** Small-input search beyond the tests, run after a pass; "checking" until it finishes. */
+  robustness?: Robustness | null;
 }
 
 export interface SubmissionView {
@@ -232,6 +396,7 @@ export interface Portfolio {
       attempts: number;
     };
     solved: { id: string; title: string; tier: number }[];
+    growth: Growth;
   };
   imports: Partial<Record<ImportPlatform, ImportRow>>;
   typing: TypingSummary | null;

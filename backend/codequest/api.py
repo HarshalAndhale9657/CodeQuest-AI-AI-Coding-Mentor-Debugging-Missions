@@ -16,9 +16,9 @@ from typing import Any, Literal
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from codequest import arena, extension, roadmap
+from codequest import arena, extension, journey, predict, roadmap
 from codequest.ai import load_dotenv
 from codequest.companion_chat import MODES, ChatRequest
 from codequest.content import load_all
@@ -32,9 +32,29 @@ class SessionIn(BaseModel):
     name: str | None = Field(default=None, max_length=40)
 
 
+class PredictionIn(BaseModel):
+    """Answer to this attempt's Predict Before You Run question: a value, "it crashes", or a skip."""
+    prompt_id: str = Field(pattern=r"^[0-9a-f]{12}$")
+    answer: str = Field(default="", max_length=predict.MAX_ANSWER_CHARS)
+    crash: bool = False
+    skipped: bool = False
+
+    @model_validator(mode="after")
+    def _answered(self) -> "PredictionIn":
+        if not (self.skipped or self.crash or self.answer.strip()):
+            raise ValueError("type a prediction, choose 'it raises an error', or skip")
+        return self
+
+
 class SubmissionIn(BaseModel):
     challenge_id: str = Field(min_length=1, max_length=64)
     code: str = Field(min_length=1, max_length=64 * 1024)
+    prediction: PredictionIn | None = None
+
+
+class ReflectionIn(BaseModel):
+    strategy: Literal[journey.SELF_REPORTS]  # type: ignore[valid-type]
+    note: str | None = Field(default=None, max_length=journey.MAX_NOTE_CHARS)
 
 
 class ImportIn(BaseModel):
@@ -205,11 +225,23 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
 
     @app.get("/api/challenges/{challenge_id}")
     def challenge(challenge_id: str, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
-        return s.get_challenge(challenge_id) | {"hints": s.hint_state(user, challenge_id)}
+        return s.get_challenge(challenge_id) | {"hints": s.hint_state(user, challenge_id),
+                                                "prediction": s.prediction_prompt(user, challenge_id)}
+
+    @app.get("/api/challenges/{challenge_id}/journey")
+    def get_journey(challenge_id: str, attempt_id: str | None = None, user=Depends(current_user),
+                    s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.journey(user, challenge_id, attempt_id)  # private: the replay shows the learner's code
+
+    @app.post("/api/challenges/{challenge_id}/reflection")
+    def reflect(challenge_id: str, body: ReflectionIn, user=Depends(current_user),
+                s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.reflect(user, challenge_id, body.strategy, body.note)
 
     @app.post("/api/submissions", status_code=202)
     def submit(body: SubmissionIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
-        return s.submit(user, body.challenge_id, body.code)
+        prediction = body.prediction.model_dump() if body.prediction else None
+        return s.submit(user, body.challenge_id, body.code, prediction)
 
     @app.get("/api/submissions/{submission_id}")
     def submission(submission_id: str, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:

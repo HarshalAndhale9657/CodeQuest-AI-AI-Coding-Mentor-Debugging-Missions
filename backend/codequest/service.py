@@ -13,13 +13,14 @@ from typing import Any
 
 from codequest.analysis.detectors import Finding
 from codequest import extension
-from codequest.analysis.probe import Counterexample, find_counterexample
+from codequest.analysis.probe import Counterexample, ProbeReport, find_counterexample, probe
+from codequest.compare import short_repr
 from codequest.content import Challenge, public_challenge
 from codequest.hints import LadderState, code_hash, gate, leak_check, max_level, safe_hint
 from codequest.judge import JudgeResult, MistakeEvent, SubmissionTooLarge, TestOutcome, judge
-from codequest.learner import (LEVEL_PRIOR, LearnerState, attempt_score, concept_bands, finish_attempt, next_up,
-                               record_mistakes, start_attempt)
-from codequest import portfolio, roadmap, typing_drills
+from codequest.learner import (LEVEL_PRIOR, VERIFIED_SCORE, LearnerState, attempt_score, concept_bands, finish_attempt,
+                               next_up, record_mistakes, record_prediction, start_attempt)
+from codequest import demo_seed, insights, journey, portfolio, predict, roadmap, typing_drills
 from codequest.ai import AILayer
 from codequest.companion_chat import CHAT_MODEL_DEFAULT, ChatRequest, CompanionTutor
 from codequest.sandbox.runner import Runner
@@ -33,6 +34,7 @@ CHAT_AI_PER_MINUTE = 8      # paid model calls; past this the learner gets the r
 AI_SPENT_KEY = "ai_spent_usd"
 AI_WORDED_LEVEL = 1
 ROADMAP_PER_MINUTE = 4      # re-plans (each may call the model once)
+FRAGILE_HOLDBACK = 0.5      # share of a fragile solve's Elo gain held back (the tests passed; the search did not)
 TYPING_PER_MINUTE = 20      # drill results
 
 
@@ -72,18 +74,6 @@ class RateLimiter:
             hits.append(now)
 
 
-# Priya's demo history, oldest first: (mission, mistakes the analyzer recorded, attempt score).
-# Built through the real learner-model functions, so bands, Elo and Mistake Memory are consistent.
-# Exactly one off-by-one is on record and it is the latest attempt: her next off-by-one in a
-# different mission makes it recurring live (m = 0.8 * 1 + 1 = 1.8 >= 1.5, seen in 2 of the last 5).
-PRIYA_HISTORY: tuple[tuple[str, tuple[str, ...], float], ...] = (
-    ("count_evens", (), 1.0),                   # solved first try
-    ("largest", ("bad_initial_value",), 0.9),   # started best at 0, fixed it after hint 1
-    ("reverse_words", (), 1.0),                 # solved first try
-    ("total", ("off_by_one",), 0.55),           # `range(len(nums) - 1)`, gave up after hints
-)
-
-
 # Priya's onboarding answers: a product-company placement in 12 weeks at 8 hours a week.
 PRIYA_PROFILE: dict[str, Any] = {"goal": "product_placement", "deadline_weeks": 12, "hours_per_week": 8,
                                  "level": "basics", "premium_ok": False, "comfortable": []}
@@ -93,12 +83,7 @@ def _seed_state(persona: str, challenges: dict[str, Challenge]) -> LearnerState:
     state = LearnerState(prior=LEVEL_PRIOR["basics"])
     if persona == "priya":
         state.profile = dict(PRIYA_PROFILE, updated=time.time())
-        for challenge_id, mistakes, score in PRIYA_HISTORY:
-            if challenge_id not in challenges:
-                continue  # content changed; the remaining history still tells a consistent story
-            start_attempt(state)
-            record_mistakes(state, list(mistakes))
-            finish_attempt(state, challenges[challenge_id], score)
+        demo_seed.seed_state(state, challenges)  # the story itself lives in codequest/demo_seed.py
     return state
 
 
@@ -108,6 +93,8 @@ class CodeQuestService:
         self.runner = runner
         self.challenges = challenges
         self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="judge")
+        # Robustness searches run after the verdict on their own worker, so they never delay anyone's verdict.
+        self._review_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="review")
         self._user_locks: dict[str, threading.Lock] = collections.defaultdict(threading.Lock)
         self._submit_limit = RateLimiter(RATE_PER_MINUTE)
         # off unless an API key is configured; spend survives restarts so the budget is a real cap
@@ -132,6 +119,7 @@ class CodeQuestService:
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=True)
+        self._review_pool.shutdown(wait=True)
 
     # ------------------------------------------------------------------ sessions
     def create_session(self, persona: str | None, name: str | None) -> dict[str, Any]:
@@ -141,6 +129,8 @@ class CodeQuestService:
         display = (name or ("Priya" if persona == "priya" else "Guest")).strip()[:40] or "Guest"
         state = _seed_state(persona, self.challenges)
         user = self.store.create_user(display, state.to_dict())
+        if persona == "priya":
+            demo_seed.seed_rows(self.store, user["id"], self.challenges)  # attempts + submissions behind the story
         return {"token": user["token"], "user": {"id": user["id"], "name": display,
                                                  "handle": portfolio.public_handle(user)}}
 
@@ -179,26 +169,45 @@ class CodeQuestService:
         return public_challenge(ch) | {"max_hint_level": max_level(ch)}
 
     # ------------------------------------------------------------------ submissions
-    def submit(self, user: dict[str, Any], challenge_id: str, code: str) -> dict[str, Any]:
+    def submit(self, user: dict[str, Any], challenge_id: str, code: str,
+               prediction: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Queue a submission. `prediction` answers this attempt's Predict Before You Run question, if any."""
         ch = self._challenge(challenge_id)
         if not isinstance(code, str) or not code.strip():
             raise ServiceError(400, "Write some code before submitting.")
         if len(code) > MAX_CODE_CHARS:
             raise ServiceError(413, "Submission is larger than 64 KiB.")
+        guess = prompt = None
+        if prediction is not None:
+            guess = predict.Guess(text=prediction.get("answer") or "", crash=bool(prediction.get("crash")),
+                                  skipped=bool(prediction.get("skipped")))
+            if not guess.skipped and not guess.crash:
+                try:
+                    predict.parse_answer(guess.text)
+                except predict.AnswerError as exc:
+                    raise ServiceError(422, str(exc)) from exc
+            prompt = predict.find_prompt(ch, str(prediction.get("prompt_id") or ""))  # None: stale, ignored
         self._submit_limit.check(user["id"])
+        asked: tuple[predict.Prompt, predict.Guess] | None = None
         with self._user_locks[user["id"]]:
             attempt = self.store.open_attempt(user["id"], ch.id)
             if attempt is None:
                 attempt = self.store.create_attempt(user["id"], ch.id)
                 state = self._state(self.store.user_by_token(user["token"]) or user)
-                start_attempt(state)
+                start_attempt(state, ch.id)
                 self.store.save_state(user["id"], state.to_dict())
             sid = self.store.create_submission(user["id"], attempt["id"], ch.id, code)
-        self._pool.submit(self._process, sid, user["id"], user["token"], attempt["id"], ch, code)
+            if guess is not None and prompt is not None and not _json(attempt.get("prediction")):
+                self.store.update_attempt(attempt["id"], prediction={
+                    "prompt_id": prompt.id, "call": prompt.call(ch), "answer": guess.text, "crash": guess.crash,
+                    "skipped": guess.skipped, "submission_id": sid, "t": time.time()})
+                asked = None if guess.skipped else (prompt, guess)
+        self._pool.submit(self._process, sid, user["id"], user["token"], attempt["id"], ch, code, asked)
         return {"submission_id": sid, "status": "queued", "hidden_test_count": len(ch.hidden_tests),
                 "visible_test_count": len(ch.visible_tests)}
 
-    def _process(self, sid: str, user_id: str, token: str, attempt_id: str, ch: Challenge, code: str) -> None:
+    def _process(self, sid: str, user_id: str, token: str, attempt_id: str, ch: Challenge, code: str,
+                 asked: tuple[predict.Prompt, predict.Guess] | None = None) -> None:
         try:
             self.store.set_status(sid, "running")
             try:
@@ -208,17 +217,71 @@ class CodeQuestService:
             except Exception:  # noqa: BLE001 - a sandbox blip (e.g. Docker hiccup): judging is pure, so retry once
                 log.warning("judging %s failed, retrying once", sid, exc_info=True)
                 result = judge(ch, code, self.runner)
-            events = self._apply_learning(user_id, token, attempt_id, ch, result)
-            public = result.public() | {"events": events}
+            prediction = self._check_prediction(attempt_id, ch, code, result, asked) if asked else None
+            events = self._apply_learning(user_id, token, attempt_id, ch, result, prediction)
+            searchable = result.all_passed and not result.violations and bool(ch.small_inputs)
+            public = result.public() | {"events": events, "prediction": prediction,
+                                        "robustness": {"status": "checking"} if searchable else None}
             self.store.finish_submission(sid, "done", public, _internal(result))
         except SubmissionTooLarge as exc:
             self.store.finish_submission(sid, "error", {"error": str(exc)}, None)
+            return
         except Exception:  # noqa: BLE001 - never leave a submission stuck; infra errors are not the learner's fault
             log.exception("judging %s failed", sid)
             self.store.finish_submission(sid, "error", {"error": "System error while judging. This is not your fault; please resubmit."}, None)
+            return
+        if searchable:
+            self._review_pool.submit(self._review_pass, sid, user_id, token, ch, code, public)
+
+    def _check_prediction(self, attempt_id: str, ch: Challenge, code: str, result: JudgeResult,
+                          asked: tuple[predict.Prompt, predict.Guess]) -> dict[str, Any] | None:
+        """Run the code on the prediction's input. If it can't be judged, the question is asked again next time."""
+        prompt, guess = asked
+        if result.syntax_error is None:
+            try:
+                return predict.evaluate(ch, code, self.runner, prompt, guess)
+            except Exception:  # noqa: BLE001 - a sandbox blip must not cost the learner their verdict
+                log.warning("prediction check for attempt %s failed", attempt_id, exc_info=True)
+        self.store.update_attempt(attempt_id, prediction=None)
+        if result.syntax_error is None:
+            return None
+        return {"state": "unrun", "prompt_id": prompt.id, "call": prompt.call(ch),
+                "message": "Your code has a syntax error, so it couldn't run on your prediction. "
+                           "Fix it, and CodeQuest will ask again on your next submission."}
+
+    def _review_pass(self, sid: str, user_id: str, token: str, ch: Challenge, code: str,
+                     public: dict[str, Any]) -> None:
+        """Why did you pass? Search small inputs beyond the tests for one the passing code gets wrong."""
+        try:
+            robustness = _robustness(ch, probe(ch, code, self.runner))
+            if robustness["status"] == "fragile":
+                robustness["held_back"] = self._hold_back(user_id, token, public.get("events") or {})
+        except Exception:  # noqa: BLE001 - the verdict already stands; an inconclusive search changes nothing
+            log.warning("robustness search for %s failed", sid, exc_info=True)
+            robustness = {"status": "unchecked"}
+        self.store.update_result(sid, public | {"robustness": robustness})
+
+    def _hold_back(self, user_id: str, token: str, events: dict[str, Any]) -> dict[str, float]:
+        """A fragile pass isn't a real pass: keep the solve, but hold back part of its Elo gain and its
+        verified-evidence credit, so concept mastery only counts code that survives inputs the tests missed."""
+        held: dict[str, float] = {}
+        with self._user_locks[user_id]:
+            user = self.store.user_by_token(token)
+            if user is None:
+                return held
+            state = self._state(user)
+            verified = float(events.get("score") or 0.0) >= VERIFIED_SCORE
+            for concept, delta in (events.get("skill_changes") or {}).items():
+                if delta > 0:
+                    held[concept] = round(delta * FRAGILE_HOLDBACK, 2)
+                    state.theta[concept] = round(state.skill(concept) - held[concept], 2)
+                if verified and state.verified.get(concept, 0) > 0:
+                    state.verified[concept] -= 1
+            self.store.save_state(user_id, state.to_dict())
+        return held
 
     def _apply_learning(self, user_id: str, token: str, attempt_id: str, ch: Challenge,
-                        result: JudgeResult) -> dict[str, Any]:
+                        result: JudgeResult, prediction: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._user_locks[user_id]:
             user = self.store.user_by_token(token)
             assert user is not None
@@ -228,9 +291,15 @@ class CodeQuestService:
             newly = record_mistakes(state, [m.key for m in result.mistakes])
             events: dict[str, Any] = {"mistakes": [m.key for m in result.mistakes], "newly_recurring": newly,
                                       "solved": False, "skill_changes": {}, "adaptation": None}
-            failed = int(attempt["failed"]) + (0 if result.all_passed else 1)
+            solved = result.all_passed and not result.violations  # passing while breaking the mission rule isn't done
+            failed = int(attempt["failed"]) + (0 if solved else 1)
             best = max(float(attempt["best_hidden"]), result.hidden_pass_fraction())
-            if result.all_passed:
+            if prediction and prediction.get("state") in predict.STATES:
+                record_prediction(state, {"challenge_id": ch.id, "concepts": ch.concepts.all,
+                                          "state": prediction["state"], "t": time.time()})
+                stored = _json(attempt.get("prediction")) or {}
+                self.store.update_attempt(attempt_id, prediction=stored | {"state": prediction["state"]})
+            if solved:
                 ladder = LadderState.from_dict(_json(attempt["ladder"]))
                 score = attempt_score(1.0, ladder.unlocked, int(attempt["failed"]))
                 events["skill_changes"] = finish_attempt(state, ch, score)
@@ -275,6 +344,10 @@ class CodeQuestService:
                 raise ServiceError(409, "Wait for your submission to be judged first.")
             result_view = _json(latest["result"]) or {}
             if result_view.get("all_passed"):
+                violations = result_view.get("rule_violations") or []
+                if violations:
+                    calls = ", ".join(dict.fromkeys(f"{v['call']}()" for v in violations))
+                    raise ServiceError(409, f"All tests pass. To finish the mission, solve it without {calls}.")
                 raise ServiceError(409, "All tests pass. No hint needed.")
             ladder = LadderState.from_dict(_json(attempt["ladder"]))
             status = gate(ladder, ch, latest["code"])
@@ -317,6 +390,57 @@ class CodeQuestService:
         latest = self.store.latest_submission(attempt["id"])
         return {"ladder": ladder.shown, "max_level": max_level(ch),
                 "next": gate(ladder, ch, latest["code"]) if latest else None}
+
+    # ------------------------------------------------------------------ Predict Before You Run
+    def prediction_prompt(self, user: dict[str, Any], challenge_id: str) -> dict[str, Any] | None:
+        """This attempt's question, or None once it has been answered or skipped (one per attempt)."""
+        ch = self._challenge(challenge_id)
+        attempt = self.store.open_attempt(user["id"], ch.id)
+        if attempt is not None and _json(attempt.get("prediction")):
+            return None
+        # Seeded by mission and attempt number, not by learner: everyone's first question on a mission is the same
+        # (so a live demo is predictable), and a new attempt usually gets a new one.
+        earlier = len(self.store.challenge_attempts(user["id"], ch.id)) - (1 if attempt is not None else 0)
+        prompt = predict.prompt_for(ch, f"{ch.id}:{earlier}")
+        return prompt.public(ch) if prompt else None
+
+    # ------------------------------------------------------------------ Debug Journey
+    def journey(self, user: dict[str, Any], challenge_id: str, attempt_id: str | None = None) -> dict[str, Any]:
+        """Replay of one attempt (default: the latest with a judged submission). Private: it shows code."""
+        ch = self._challenge(challenge_id)
+        attempts = [a for a in self.store.challenge_attempts(user["id"], ch.id) if a["judged"]]
+        if attempt_id:
+            attempt = next((a for a in attempts if a["id"] == attempt_id), None)
+            if attempt is None:
+                raise ServiceError(404, "Unknown attempt.")
+        else:
+            attempt = attempts[0] if attempts else None
+        if attempt is None:
+            return {"attempt": None, "attempts": [], "steps": [], "summary": None, "reflection": None, "agreement": None}
+        view = journey.build(self.store.attempt_submissions(attempt["id"]))
+        reflection = _json(attempt.get("reflection"))
+        return {
+            "attempt": {"id": attempt["id"], "created": attempt["created"], "open": bool(attempt["open"]),
+                        "solved": not attempt["open"] and bool(view["summary"]["solved"])},
+            "attempts": [{"id": a["id"], "created": a["created"], "open": bool(a["open"]), "submissions": a["judged"]}
+                         for a in attempts],
+            **view,
+            "reflection": reflection,
+            "agreement": journey.agreement(view["summary"]["style"], reflection),
+        }
+
+    def reflect(self, user: dict[str, Any], challenge_id: str, strategy: str, note: str | None) -> dict[str, Any]:
+        """Save the learner's own reading of how they debugged their latest attempt."""
+        ch = self._challenge(challenge_id)
+        if strategy not in journey.SELF_REPORTS:
+            raise ServiceError(422, "Unknown strategy.")
+        with self._user_locks[user["id"]]:
+            attempt = next((a for a in self.store.challenge_attempts(user["id"], ch.id) if a["judged"]), None)
+            if attempt is None:
+                raise ServiceError(409, "Submit an attempt first: the reflection is about how you debugged it.")
+            text = " ".join((note or "").split())[:journey.MAX_NOTE_CHARS] or None
+            self.store.update_attempt(attempt["id"], reflection={"strategy": strategy, "note": text, "t": time.time()})
+        return self.journey(user, challenge_id, attempt["id"])
 
     # ------------------------------------------------------------------ profile
     def me(self, user: dict[str, Any]) -> dict[str, Any]:
@@ -396,8 +520,8 @@ class CodeQuestService:
         handle = portfolio.public_handle(user)
         state = self._state(user)
         bands = concept_bands(state, self.challenges)
-        hints = sum(len(_json(a["ladder"]).get("shown", [])) for a in self.store.user_attempts(user["id"])
-                    if a["ladder"])
+        attempts = self.store.user_attempts(user["id"])
+        hints = sum(len(_json(a["ladder"]).get("shown", [])) for a in attempts if a["ladder"])
         solved = state.solved
         debug_solved = [c for c in solved if c in self.challenges and self.challenges[c].type == "debug"]
         imports = {}
@@ -416,6 +540,8 @@ class CodeQuestService:
                           "debug_missions": len(debug_solved), "attempts": state.attempts},
                 "solved": [{"id": c, "title": self.challenges[c].title, "tier": self.challenges[c].tier}
                            for c in solved if c in self.challenges],
+                "growth": insights.build(attempts, self.store.user_submissions(user["id"]), state, self.challenges,
+                                         bands),
             },
             "imports": imports,
             "typing": typing_drills.summarize(self.store.typing_runs(user["id"])),
@@ -627,6 +753,7 @@ class CodeQuestService:
             "learner": state.to_dict(),
             "attempts": [{"challenge_id": a["challenge_id"], "open": bool(a["open"]), "failed": a["failed"],
                           "best_hidden": a["best_hidden"], "hints": (_json(a["ladder"]) or {}).get("shown", []),
+                          "prediction": _json(a.get("prediction")), "reflection": _json(a.get("reflection")),
                           "created": a["created"]} for a in self.store.user_attempts(fresh["id"])],
             "submissions": [{"challenge_id": r["challenge_id"], "code": r["code"], "status": r["status"],
                              "result": _json(r["result"]), "created": r["created"]}
@@ -664,7 +791,7 @@ class CodeQuestService:
         with self._user_locks[user["id"]]:
             fresh = self.store.user_by_token(user["token"]) or user
             state = self._state(fresh)
-            start_attempt(state)
+            start_attempt(state, f"lc:{slug}")
             newly = record_mistakes(state, keys)
             if verdict == "accepted" and slug not in state.roadmap_done:
                 state.roadmap_done.append(slug)  # an accepted LeetCode problem ticks off its roadmap item
@@ -698,6 +825,35 @@ def _restore(ch: Challenge, internal: dict[str, Any]) -> JudgeResult:
         outcomes.append(TestOutcome("crash", 1, "visible", "runtime_error", ["typical"], "typical case",
                                     line=internal["crash_line"]))
     return JudgeResult(ch.id, outcomes, findings, mistakes)
+
+
+def _robustness(ch: Challenge, report: ProbeReport | None) -> dict[str, Any]:
+    """Public result of the small-input search on a passing submission."""
+    if report is None or not report.complete:
+        return {"status": "unchecked"}
+    if report.counterexample is None:
+        return {"status": "robust", "checked": report.checked,
+                "message": f"CodeQuest also tried {report.checked} small inputs beyond the tests, and your code got "
+                           "every one right."}
+    ce = report.counterexample
+    call = f"{ch.function}({', '.join(short_repr(a) for a in ce.args)})"
+    if ce.error is None:
+        did = f"returned {short_repr(ce.got)}"
+    elif ce.error.startswith("no answer"):
+        did = "never finished"
+    else:
+        did = f"raised {ce.error}"
+    return {
+        "status": "fragile",
+        "checked": report.checked,
+        "failed": report.failed,
+        "held_back": {},
+        "counterexample": {"call": call, "expected": short_repr(ce.expected),
+                           "got": None if ce.error else short_repr(ce.got), "error": ce.error},
+        "message": f"Every test passed, but CodeQuest searched {report.checked} small inputs beyond them and your code "
+                   f"gets {report.failed} wrong. For {call} the answer is {short_repr(ce.expected)}, but your code "
+                   f"{did}. Tests can't cover everything: make this case work too.",
+    }
 
 
 def _ce_dict(ce: Counterexample | None) -> dict[str, Any] | None:

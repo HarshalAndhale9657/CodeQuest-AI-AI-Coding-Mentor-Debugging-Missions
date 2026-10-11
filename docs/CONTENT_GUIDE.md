@@ -87,6 +87,7 @@ references:                     # one or more correct solutions (never sent to c
 | `small_inputs` | | Per-parameter spec: `kind` `int` / `list_int` / `str`, `values` or `alphabet`, `max_len` 0–5 |
 | `time_limit_s` | | Per test, default 2.0, at most 5 |
 | `max_changed_lines` | debug only | Line budget for the fix |
+| `forbidden_calls` | | Calls the mission forbids, as names (`max`) or methods (`.sort`). Passing code that uses one is not a solve; references may not use them |
 
 ### Test tags and the categories learners see for hidden tests
 
