@@ -209,6 +209,10 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     def ext_sync(body: ExtSyncIn, user=Depends(ext_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.ext_sync(user, body.slug, body.tags, body.verdict, body.code)
 
+    @app.get("/api/ext/me")
+    def ext_me(user=Depends(ext_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.ext_summary(user)
+
     @app.get("/api/arena/attacks")
     def attacks() -> list[dict[str, Any]]:
         return arena.list_attacks()

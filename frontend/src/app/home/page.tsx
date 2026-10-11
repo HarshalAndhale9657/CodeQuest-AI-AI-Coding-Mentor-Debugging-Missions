@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Brain, Bug, CheckCircle2, Sparkles, Trophy } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ConnectExtension } from "@/components/connect-extension";
 import { ApiError, api } from "@/lib/api";
 import { conceptLabel, mistakeLabel, TIER_NAME } from "@/lib/format";
 import type { ChallengeSummary, SkillBand } from "@/lib/types";
@@ -147,6 +148,7 @@ function Home() {
             ))}
           </ul>
         </section>
+        <ConnectExtension />
       </aside>
     </div>
   );

@@ -84,6 +84,17 @@ button.ghost, button.icon { background: transparent; color: var(--muted); border
 .verdict.partially, .verdict.unclear { color: var(--wrong); }
 .verdict.off_track { color: var(--error); }
 
+.switch { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text); margin: 6px 0; cursor: pointer; }
+.switch input { width: auto; margin-top: 3px; accent-color: var(--accent); }
+.manual { margin-top: 8px; color: var(--muted); }
+.manual summary { cursor: pointer; margin-bottom: 6px; }
+#log-last-btn { margin-top: 8px; }
+.memory-list { margin: 4px 0 0; padding-left: 18px; }
+.memory-list li { margin: 2px 0; }
+.badge { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 12px; font-weight: 600; }
+.badge.accepted { background: rgba(52, 211, 153, 0.15); color: var(--pass); }
+.badge.failed { background: rgba(248, 113, 113, 0.15); color: var(--error); }
+
 .finding { margin: 6px 0; }
 .finding b { color: var(--wrong); }
 .error { color: var(--error); }

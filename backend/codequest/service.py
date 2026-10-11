@@ -270,6 +270,18 @@ class CodeQuestService:
             "next_up": next_up(state, self.challenges),
         }
 
+    def ext_summary(self, user: dict[str, Any]) -> dict[str, Any]:
+        """Compact profile for the extension panel (reads fresh state: the extension user row is a join)."""
+        fresh = self.store.user_by_token(user["token"]) or user
+        state = self._state(fresh)
+        return {
+            "user": {"name": fresh["name"], "handle": portfolio.public_handle(fresh)},
+            "recurring": state.recurring,
+            "beaten": state.beaten,
+            "solved": len(state.solved),
+            "next_up": [{"challenge_id": n["challenge_id"], "title": n["title"], "reason": n["reason"]}
+                        for n in next_up(state, self.challenges)],
+        }
 
     # ------------------------------------------------------------------ portfolio
     def portfolio(self, handle: str) -> dict[str, Any]:

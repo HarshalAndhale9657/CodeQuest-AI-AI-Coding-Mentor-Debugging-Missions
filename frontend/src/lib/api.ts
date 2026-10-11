@@ -95,6 +95,8 @@ export const api = {
   hint: (challengeId: string) =>
     request<HintResponse>(`/api/challenges/${encodeURIComponent(challengeId)}/hint`, { method: "POST" }),
   me: () => request<Me>("/api/me"),
+  extensionPairingCode: () =>
+    request<{ code: string; expires_in_s: number }>("/api/ext/pairing-code", { method: "POST" }),
   attacks: () => request<ArenaAttack[]>("/api/arena/attacks"),
   runAttack: (index: number) =>
     request<ArenaResult>("/api/arena/run", { method: "POST", body: JSON.stringify({ index }) }),

@@ -2,21 +2,24 @@
 // Security notes:
 //  * Everything shown is rendered with textContent (never innerHTML), so server or page text can't inject markup.
 //  * The extension token lives in chrome.storage.local and is sent only to the configured CodeQuest server.
-//  * Code is read from the LeetCode editor only when the learner presses a button.
+//  * Code is read from the LeetCode editor only when the learner presses a button, or automatically on
+//    LeetCode "Submit" when the learner has switched Auto-log on (handled by the service worker).
+import { describeSync } from "./lib/submission.js";
 
 const DEFAULT_API = "http://localhost:8000";
 const MAX_HINT_LEVEL = 3;
 const $ = (id) => document.getElementById(id);
 
-const state = { apiBase: DEFAULT_API, token: null, tabId: null, problem: null, hintLevel: {} };
+const state = { apiBase: DEFAULT_API, token: null, tabId: null, problem: null, hintLevel: {}, autoLog: false };
 
 // ------------------------------------------------------------------ storage
 
 async function loadSettings() {
-  const data = await chrome.storage.local.get(["apiBase", "token", "hintLevel"]);
+  const data = await chrome.storage.local.get(["apiBase", "token", "hintLevel", "autoLog"]);
   state.apiBase = data.apiBase || DEFAULT_API;
   state.token = data.token || null;
   state.hintLevel = data.hintLevel || {};
+  state.autoLog = data.autoLog === true;
 }
 
 async function saveSettings(patch) {
@@ -33,16 +36,16 @@ class ApiError extends Error {
   }
 }
 
-async function api(path, body) {
+async function api(path, body, method = "POST") {
   let response;
   try {
     response = await fetch(`${state.apiBase}${path}`, {
-      method: "POST",
+      method,
       headers: {
-        "Content-Type": "application/json",
+        ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
         ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
       },
-      body: JSON.stringify(body ?? {}),
+      ...(method === "POST" ? { body: JSON.stringify(body ?? {}) } : {}),
     });
   } catch {
     throw new ApiError(0, `Can't reach the CodeQuest server at ${state.apiBase}. Check Settings.`);
@@ -140,6 +143,119 @@ function render() {
   $("pair-view").hidden = !!state.token;
   $("main-view").hidden = !state.token;
   $("api-base").value = state.apiBase;
+  $("auto-log").checked = state.autoLog;
+}
+
+// ------------------------------------------------------------------ Mistake Memory + submissions
+
+const LABELS = {
+  off_by_one: "Off-by-one",
+  empty_input: "Unhandled empty input",
+  print_vs_return: "Print instead of return",
+  missing_return: "Missing return",
+  infinite_loop: "Loop that never ends",
+  base_case: "Missing base case",
+  bad_initial_value: "Bad starting value",
+  mutate_while_iterating: "Changing a list while looping",
+  shadow_builtin: "Hidden built-in name",
+  int_division: "Division mix-up",
+};
+const label = (key) => LABELS[key] ?? key.replaceAll("_", " ");
+
+function listOf(items) {
+  const ul = document.createElement("ul");
+  ul.className = "memory-list";
+  for (const text of items) {
+    const li = document.createElement("li");
+    li.textContent = text;
+    ul.append(li);
+  }
+  return ul;
+}
+
+async function refreshMemory() {
+  const out = $("memory-out");
+  if (!state.token) return;
+  try {
+    const me = await api("/api/ext/me", null, "GET");
+    out.replaceChildren();
+    out.className = "";
+    const intro = document.createElement("p");
+    intro.className = "muted";
+    intro.textContent = `${me.user.name} · ${me.solved} CodeQuest missions solved`;
+    out.append(intro);
+    if (me.recurring.length) {
+      const head = document.createElement("p");
+      head.className = "error";
+      head.textContent = "Recurring mistakes to watch:";
+      out.append(head, listOf(me.recurring.map(label)));
+    } else {
+      const ok = document.createElement("p");
+      ok.className = "ok";
+      ok.textContent = "No recurring mistakes right now.";
+      out.append(ok);
+    }
+    if (me.beaten.length) out.append(listOf(me.beaten.map((k) => `Beaten: ${label(k)}`)));
+    if (me.next_up.length) {
+      const next = document.createElement("p");
+      next.className = "muted";
+      next.textContent = `Next CodeQuest mission: ${me.next_up[0].title}. ${me.next_up[0].reason}.`;
+      out.append(next);
+    }
+  } catch (err) {
+    out.className = "error";
+    out.textContent = err instanceof ApiError ? err.message : "Couldn't load your Mistake Memory.";
+  }
+}
+
+function renderLastSubmission(record) {
+  const out = $("last-submission");
+  const button = $("log-last-btn");
+  out.replaceChildren();
+  out.className = "out";
+  button.hidden = true;
+  if (!record) return;
+  const badge = document.createElement("span");
+  badge.className = `badge ${record.verdict === "accepted" ? "accepted" : "failed"}`;
+  badge.textContent = record.statusMsg;
+  const title = document.createElement("span");
+  title.textContent = ` on ${record.slug}`;
+  const detail = document.createElement("p");
+  if (record.logged) {
+    detail.className = "ok";
+    detail.textContent = `Logged to CodeQuest. ${record.summary}`;
+  } else if (record.error) {
+    detail.className = "error";
+    detail.textContent = record.error;
+    button.hidden = false;
+  } else {
+    detail.className = "muted";
+    detail.textContent = record.isPython
+      ? "Detected. Not logged yet (Auto-log is off)."
+      : "Detected. Only Python code can be analyzed; the verdict can still be logged.";
+    button.hidden = false;
+  }
+  out.append(badge, title, detail);
+}
+
+async function onLogLast() {
+  const button = $("log-last-btn");
+  const { lastSubmission: record } = await chrome.storage.local.get("lastSubmission");
+  if (!record) return;
+  const { pendingCode } = await chrome.storage.session.get("pendingCode");
+  const code = pendingCode?.submissionId === record.submissionId ? pendingCode.code : "";
+  setBusy(button, true, "Logging…");
+  try {
+    const result = await api("/api/ext/sync", { slug: record.slug, tags: record.tags, verdict: record.verdict, code });
+    await chrome.storage.local.set({ lastSubmission: { ...record, logged: true, summary: describeSync(result), error: "" } });
+    await refreshMemory();
+  } catch (err) {
+    await chrome.storage.local.set({
+      lastSubmission: { ...record, error: err instanceof ApiError ? err.message : "Logging failed." },
+    });
+  } finally {
+    setBusy(button, false, "Log this submission");
+  }
 }
 
 function renderProblem() {
@@ -214,7 +330,7 @@ async function onPair(event) {
     await saveSettings({ token: data.token });
     status.textContent = "";
     render();
-    await refreshActiveTab();
+    await Promise.all([refreshActiveTab(), refreshMemory()]);
   } catch (err) {
     status.textContent = err instanceof ApiError ? err.message : "Pairing failed.";
   }
@@ -334,6 +450,7 @@ async function onSync() {
     } else {
       setText(out, "Logged. Nice work!", "ok");
     }
+    await refreshMemory();
   } catch (err) {
     showError(out, err);
   } finally {
@@ -389,11 +506,26 @@ async function init() {
   $("hint-btn").addEventListener("click", onHint);
   $("analyze-btn").addEventListener("click", onAnalyze);
   $("sync-btn").addEventListener("click", onSync);
+  $("log-last-btn").addEventListener("click", onLogLast);
+  $("auto-log").addEventListener("change", (event) => saveSettings({ autoLog: event.target.checked }));
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (changes.lastSubmission) {
+      renderLastSubmission(changes.lastSubmission.newValue);
+      if (changes.lastSubmission.newValue?.logged) refreshMemory();
+    }
+    if (changes.token && !changes.token.newValue && state.token) {
+      state.token = null;
+      render();
+    }
+  });
+  const { lastSubmission } = await chrome.storage.local.get("lastSubmission");
+  renderLastSubmission(lastSubmission);
   chrome.tabs.onActivated.addListener(refreshActiveTab);
   chrome.tabs.onUpdated.addListener((tabId, info) => {
     if (tabId === state.tabId && info.url) refreshActiveTab();
   });
-  await refreshActiveTab();
+  await Promise.all([refreshActiveTab(), refreshMemory()]);
 }
 
 init();

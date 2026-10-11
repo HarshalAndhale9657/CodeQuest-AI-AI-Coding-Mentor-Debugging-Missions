@@ -62,22 +62,35 @@
       </div>
 
       <div class="card">
-        <h3>4 · Log this attempt</h3>
-        <p class="muted">After you submit on LeetCode, log the result so CodeQuest can track your recurring mistakes.</p>
-        <div class="row">
-          <select id="verdict" aria-label="LeetCode result">
-            <option value="wrong_answer">Wrong Answer</option>
-            <option value="runtime_error">Runtime Error</option>
-            <option value="time_limit">Time Limit Exceeded</option>
-            <option value="accepted">Accepted</option>
-          </select>
-          <button id="sync-btn" type="button" data-needs-problem>Log attempt</button>
-        </div>
+        <h3>4 · Your LeetCode submissions</h3>
+        <label class="switch">
+          <input id="auto-log" type="checkbox" />
+          <span>Auto-log my submissions: when I press Submit on LeetCode, send the result and my Python code to CodeQuest</span>
+        </label>
+        <div id="last-submission" class="out" aria-live="polite"></div>
+        <button id="log-last-btn" type="button" hidden>Log this submission</button>
+        <details class="manual">
+          <summary>Log manually</summary>
+          <div class="row">
+            <select id="verdict" aria-label="LeetCode result">
+              <option value="wrong_answer">Wrong Answer</option>
+              <option value="runtime_error">Runtime Error</option>
+              <option value="time_limit">Time Limit Exceeded</option>
+              <option value="accepted">Accepted</option>
+            </select>
+            <button id="sync-btn" type="button" data-needs-problem>Log attempt</button>
+          </div>
+        </details>
         <div id="sync-out" class="out" aria-live="polite"></div>
+      </div>
+
+      <div class="card" id="memory-card">
+        <h3>Your Mistake Memory</h3>
+        <div id="memory-out" class="muted">Loading…</div>
       </div>
     </section>
 
-    <footer class="muted small">Your code leaves the browser only when you press a button. Disabled during contests.</footer>
+    <footer class="muted small">Your code leaves the browser only when you press a button or switch on Auto-log. Disabled during contests.</footer>
     <script src="sidepanel.js" type="module"></script>
   </body>
 </html>

@@ -23,17 +23,30 @@ const URLS = {
   contest: "https://leetcode.com/contest/weekly-contest-400/problems/two-sum/",
 };
 
-const store = {};
+const changeListeners = [];
+function area(name, store) {
+  return {
+    async get(keys) {
+      const list = typeof keys === "string" ? [keys] : keys;
+      return Object.fromEntries(list.filter((k) => k in store).map((k) => [k, structuredClone(store[k])]));
+    },
+    async set(patch) {
+      const changes = {};
+      for (const [k, v] of Object.entries(patch)) changes[k] = { oldValue: store[k], newValue: structuredClone(v) };
+      Object.assign(store, structuredClone(patch));
+      changeListeners.forEach((fn) => fn(changes, name));
+    },
+  };
+}
+const localStore = {};
+const sessionStore = {};
+// Lets a test simulate the service worker recording a detected LeetCode submission.
+window.__harness = { local: area("local", localStore), session: area("session", sessionStore), localStore };
 window.chrome = {
   storage: {
-    local: {
-      async get(keys) {
-        return Object.fromEntries(keys.filter((k) => k in store).map((k) => [k, structuredClone(store[k])]));
-      },
-      async set(patch) {
-        Object.assign(store, structuredClone(patch));
-      },
-    },
+    local: window.__harness.local,
+    session: window.__harness.session,
+    onChanged: { addListener: (fn) => changeListeners.push(fn) },
   },
   tabs: {
     async query() {

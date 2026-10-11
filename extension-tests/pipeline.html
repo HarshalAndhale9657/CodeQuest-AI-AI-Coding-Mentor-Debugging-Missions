@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Companion pipeline test</title>
+    <!-- Loaded first, like the real MAIN-world content script at document_start. -->
+    <script src="/ext/content/page-hook.js"></script>
+  </head>
+  <body style="background:#0b0f17;color:#e6ebf5;font:13px ui-monospace,monospace">
+    <pre id="out">running…</pre>
+    <script type="module" src="/tests/pipeline.js"></script>
+  </body>
+</html>

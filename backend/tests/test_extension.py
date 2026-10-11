@@ -118,4 +118,9 @@ def test_sync_feeds_mistake_memory(client):
     assert accepted["recorded_mistakes"] == []
     me = client.get("/api/me", headers=web_h).json()
     assert "off_by_one" in me["mistakes"]["recurring"]
+    summary = client.get("/api/ext/me", headers=ext_h).json()
+    assert set(summary["recurring"]) == {"off_by_one", "bad_initial_value"}  # both are real in LEETCODE_CODE
+    assert summary["next_up"] and {"challenge_id", "title", "reason"} == set(summary["next_up"][0])
+    assert summary["next_up"][0]["reason"].startswith("Targets your recurring mistake")
+    assert client.get("/api/ext/me", headers=web_h).status_code == 401
     assert client.post("/api/ext/sync", json=body | {"slug": "Bad Slug!"}, headers=ext_h).status_code == 422
