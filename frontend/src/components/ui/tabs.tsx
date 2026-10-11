@@ -83,7 +83,7 @@ export function TabPanel({
   className?: string;
 }) {
   return (
-    <div role="tabpanel" id={`${idPrefix}-panel-${id}`} aria-labelledby={`${idPrefix}-tab-${id}`} hidden={!active} className={className}>
+    <div role="tabpanel" id={`${idPrefix}-panel-${id}`} aria-labelledby={`${idPrefix}-tab-${id}`} hidden={!active} className={cx(active && "cq-fade-in", className)}>
       {active && children}
     </div>
   );

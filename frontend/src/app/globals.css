@@ -79,32 +79,82 @@ body {
   background: transparent;
 }
 
-/* Resize handles between workspace panels */
+/*
+ * Resize handles between workspace panels: the 8px gutter that separates the panel cards.
+ * react-resizable-panels v4 sets an inline `flex-basis: auto`, so the gutter size must come from width/height.
+ * A short grip sits in the middle; while hovered or dragged the full-length line turns blue (as on LeetCode).
+ */
 .cq-handle {
   position: relative;
-  flex: 0 0 8px;
+  flex-shrink: 0;
   background: transparent;
   outline: none;
 }
+.cq-handle[aria-orientation="vertical"] {
+  width: 8px;
+  cursor: col-resize;
+}
+.cq-handle[aria-orientation="horizontal"] {
+  height: 8px;
+  cursor: row-resize;
+}
+.cq-handle::before,
 .cq-handle::after {
   content: "";
   position: absolute;
   border-radius: 999px;
-  background: transparent;
-  transition: background-color 120ms;
+  pointer-events: none;
+}
+.cq-handle::before {
+  background: var(--lc-border-strong);
+  transition: opacity 150ms;
+}
+.cq-handle::after {
+  background: var(--lc-blue);
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.cq-handle[aria-orientation="vertical"]::before {
+  top: calc(50% - 12px);
+  left: 3px;
+  width: 2px;
+  height: 24px;
+}
+.cq-handle[aria-orientation="horizontal"]::before {
+  left: calc(50% - 12px);
+  top: 3px;
+  height: 2px;
+  width: 24px;
 }
 .cq-handle[aria-orientation="vertical"]::after {
-  inset: 30% 3px;
+  inset: 0 3px;
 }
 .cq-handle[aria-orientation="horizontal"]::after {
-  inset: 3px 30%;
+  inset: 3px 0;
 }
-.cq-handle:hover::after,
-.cq-handle[data-separator="active"]::after,
 .cq-handle[data-separator="hover"]::after,
+.cq-handle[data-separator="active"]::after,
 .cq-handle[data-separator="focus"]::after,
 .cq-handle:focus-visible::after {
-  background: var(--lc-blue);
+  opacity: 1;
+}
+.cq-handle[data-separator="hover"]::before,
+.cq-handle[data-separator="active"]::before,
+.cq-handle[data-separator="focus"]::before {
+  opacity: 0;
+}
+
+/* Workspace tab panels fade in instead of popping */
+@keyframes cq-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cq-fade-in {
+  animation: cq-fade-in 140ms ease-out;
 }
 
 /* Monaco decorations (global, Monaco renders outside React) */

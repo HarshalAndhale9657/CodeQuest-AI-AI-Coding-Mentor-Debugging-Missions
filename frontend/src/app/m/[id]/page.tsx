@@ -19,12 +19,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout, useGroupRef } from "react-resizable-panels";
 import { AdaptationPanel } from "@/components/adaptation-panel";
 import { WorkspaceFrame, WorkspaceGate } from "@/components/app-shell";
-import { CodeEditor } from "@/components/code-editor";
+import { CodeEditor, preloadEditor } from "@/components/code-editor";
 import { HintLadder } from "@/components/hint-ladder";
+import { MissionDescription } from "@/components/mission-description";
 import { ResultsBoard } from "@/components/results-board";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/card";
 import { cx } from "@/components/ui/cx";
@@ -34,6 +35,7 @@ import { DifficultyLabel, Tag } from "@/components/ui/tag";
 import { ApiError, api } from "@/lib/api";
 import { conceptLabel } from "@/lib/format";
 import { isJudgeResult, type ChallengeDetail, type ChallengeSummary, type HintEntry, type JudgeResult } from "@/lib/types";
+import { usePrefetchMission } from "@/lib/prefetch";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 const DRAFT_PREFIX = "codequest.draft.";
@@ -58,6 +60,53 @@ function formatArgs(args: unknown[]): string {
   return args.map((a) => JSON.stringify(a)).join(", ");
 }
 
+const DRAFT_SAVE_DELAY_MS = 400;
+
+interface EditorStatus {
+  line: number;
+  col: number;
+  saving: boolean;
+}
+
+/**
+ * Cursor position and draft-save state change on every keystroke. They live in this tiny store so only the status bar
+ * re-renders while typing, not the whole workspace.
+ */
+function createEditorStatus() {
+  let state: EditorStatus = { line: 1, col: 1, saving: false };
+  const listeners = new Set<() => void>();
+  return {
+    get: () => state,
+    set(patch: Partial<EditorStatus>) {
+      state = { ...state, ...patch };
+      listeners.forEach((l) => l());
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+type EditorStatusStore = ReturnType<typeof createEditorStatus>;
+
+function EditorStatusBar({ store }: { store: EditorStatusStore }) {
+  const { line, col, saving } = useSyncExternalStore(store.subscribe, store.get, store.get);
+  return (
+    <div className="flex h-7 shrink-0 items-center gap-3 px-3 text-xs text-text-3">
+      <span>{saving ? "Saving…" : "Saved"}</span>
+      <span className="hidden sm:inline">
+        <Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit
+      </span>
+      <span className="ml-auto tabular-nums">
+        Ln {line}, Col {col}
+      </span>
+    </div>
+  );
+}
+
 export default function MissionPage() {
   return (
     <WorkspaceGate>
@@ -67,12 +116,20 @@ export default function MissionPage() {
 }
 
 function Breadcrumb({ list, id }: { list: ChallengeSummary[] | undefined; id: string }) {
+  const prefetch = usePrefetchMission();
   const index = list?.findIndex((m) => m.id === id) ?? -1;
   const prev = index > 0 ? list?.[index - 1] : undefined;
   const next = index >= 0 ? list?.[index + 1] : undefined;
   const arrow = (target: ChallengeSummary | undefined, label: string, icon: ReactNode) =>
     target ? (
-      <Link href={`/m/${target.id}`} aria-label={`${label}: ${target.title}`} title={target.title} className="grid size-8 place-items-center rounded-lc-sm text-text-2 hover:bg-fill-2 hover:text-text-1">
+      <Link
+        href={`/m/${target.id}`}
+        aria-label={`${label}: ${target.title}`}
+        title={target.title}
+        onMouseEnter={() => prefetch(target.id)}
+        onFocus={() => prefetch(target.id)}
+        className="grid size-8 place-items-center rounded-lc-sm text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1"
+      >
         {icon}
       </Link>
     ) : (
@@ -83,7 +140,7 @@ function Breadcrumb({ list, id }: { list: ChallengeSummary[] | undefined; id: st
   return (
     <div className="hidden items-center gap-1 sm:flex">
       <span className="mx-1 h-4 w-px bg-line-strong" aria-hidden />
-      <Link href="/home" className="flex h-8 items-center gap-2 rounded-lc-sm px-2 text-[15px] font-medium text-text-1 hover:bg-fill-2">
+      <Link href="/home" className="flex h-8 items-center gap-2 rounded-lc-sm px-2 text-[15px] font-medium text-text-1 transition-colors hover:bg-fill-2">
         <List size={18} aria-hidden /> Quest
       </Link>
       {arrow(prev, "Previous mission", <ChevronLeft size={18} />)}
@@ -96,6 +153,16 @@ function Mission() {
   const { id } = useParams<{ id: string }>();
   const challenge = useQuery({ queryKey: ["challenge", id], queryFn: () => api.challenge(id) });
   const list = useQuery({ queryKey: ["challenges"], queryFn: api.challenges });
+  const prefetch = usePrefetchMission();
+  const loaded = challenge.isSuccess;
+
+  // Warm the editor straight away, and the next mission once this one is on screen, so moving on is instant.
+  useEffect(preloadEditor, []);
+  useEffect(() => {
+    if (!loaded || !list.data) return;
+    const next = list.data[list.data.findIndex((m) => m.id === id) + 1];
+    if (next) prefetch(next.id);
+  }, [loaded, list.data, id, prefetch]);
 
   if (challenge.isError) {
     return (
@@ -148,9 +215,11 @@ function Workspace({
 }) {
   const queryClient = useQueryClient();
   const wide = useMediaQuery("(min-width: 1024px)");
-  const [code, setCode] = useState(() => readDraft(challenge.id) ?? challenge.starter_code);
-  const [editorKey, setEditorKey] = useState(0);
-  const [cursor, setCursor] = useState<[number, number]>([1, 1]);
+  // The editor owns the live text; `seed` only changes on reset (it remounts the editor with the starter code).
+  const [seed, setSeed] = useState(() => ({ key: 0, code: readDraft(challenge.id) ?? challenge.starter_code }));
+  const codeRef = useRef(seed.code);
+  const saveTimer = useRef<number | null>(null);
+  const [status] = useState(createEditorStatus);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [focusRegion, setFocusRegion] = useState<[number, number] | null>(null);
@@ -189,7 +258,7 @@ function Workspace({
   }, [finished, submissionId, queryClient, challenge.id]);
 
   const submit = useMutation({
-    mutationFn: () => api.submit(challenge.id, code),
+    mutationFn: () => api.submit(challenge.id, codeRef.current),
     onMutate: () => {
       setSubmitError(null);
       setBottomTab("result");
@@ -221,23 +290,45 @@ function Workspace({
     initialData: challenge,
   });
 
+  const flushDraft = useCallback(() => {
+    if (saveTimer.current === null) return;
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    writeDraft(challenge.id, codeRef.current);
+    status.set({ saving: false });
+  }, [challenge.id, status]);
+
+  // Never lose the last keystrokes when leaving the page or closing the tab.
+  useEffect(() => {
+    window.addEventListener("pagehide", flushDraft);
+    return () => {
+      window.removeEventListener("pagehide", flushDraft);
+      flushDraft();
+    };
+  }, [flushDraft]);
+
+  // Drafts are written after a short pause in typing, not on every keystroke.
   const onChange = useCallback(
     (value: string) => {
-      setCode(value);
-      writeDraft(challenge.id, value);
+      codeRef.current = value;
+      if (saveTimer.current === null) status.set({ saving: true });
+      else window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(flushDraft, DRAFT_SAVE_DELAY_MS);
     },
-    [challenge.id],
+    [flushDraft, status],
   );
-  const onCursor = useCallback((line: number, col: number) => setCursor([line, col]), []);
+  const onCursor = useCallback((line: number, col: number) => status.set({ line, col }), [status]);
 
   const doSubmit = useCallback(() => {
+    flushDraft();
     if (!judging && !submit.isPending) submit.mutate();
-  }, [judging, submit]);
+  }, [flushDraft, judging, submit]);
 
   const resetCode = () => {
-    setCode(challenge.starter_code);
+    flushDraft();
+    codeRef.current = challenge.starter_code;
     writeDraft(challenge.id, challenge.starter_code);
-    setEditorKey((k) => k + 1);
+    setSeed((s) => ({ key: s.key + 1, code: challenge.starter_code }));
   };
 
   const crash = useMemo(() => {
@@ -303,7 +394,7 @@ function Workspace({
           </Tag>
         ))}
       </div>
-      <p className="whitespace-pre-line text-[15px] leading-relaxed text-text-1">{challenge.description}</p>
+      <MissionDescription text={challenge.description} />
       {challenge.max_changed_lines && (
         <p className="rounded-lc bg-medium/10 px-3 py-2 text-sm text-medium">
           Fix it by changing at most {challenge.max_changed_lines} lines.
@@ -402,7 +493,7 @@ function Workspace({
         <button
           type="button"
           onClick={resetCode}
-          className="grid size-7 place-items-center rounded-lc-sm text-text-2 hover:bg-fill-3 hover:text-text-1"
+          className="grid size-7 place-items-center rounded-lc-sm text-text-2 transition-colors hover:bg-fill-3 hover:text-text-1"
           aria-label="Reset to the starter code"
           title="Reset to the starter code"
         >
@@ -411,9 +502,9 @@ function Workspace({
       </div>
       <div className="min-h-0 flex-1">
         <CodeEditor
-          key={editorKey}
+          key={seed.key}
           path={`${challenge.id}.py`}
-          defaultValue={code}
+          defaultValue={seed.code}
           onChange={onChange}
           onSubmitShortcut={doSubmit}
           onCursor={onCursor}
@@ -422,15 +513,7 @@ function Workspace({
           crashMessage={crash?.message ?? null}
         />
       </div>
-      <div className="flex h-7 shrink-0 items-center gap-3 px-3 text-xs text-text-3">
-        <span>Saved</span>
-        <span className="hidden sm:inline">
-          <Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit
-        </span>
-        <span className="ml-auto tabular-nums">
-          Ln {cursor[0]}, Col {cursor[1]}
-        </span>
-      </div>
+      <EditorStatusBar store={status} />
     </Panel>
   );
 

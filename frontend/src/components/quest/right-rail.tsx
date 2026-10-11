@@ -3,6 +3,7 @@
 import { ArrowRight, Brain, Puzzle, Sparkles, Trophy } from "lucide-react";
 import Link from "next/link";
 import { conceptLabel, mistakeLabel } from "@/lib/format";
+import { usePrefetchMission } from "@/lib/prefetch";
 import type { Me, SkillBand } from "@/lib/types";
 import { Card, CardTitle } from "../ui/card";
 import { cx } from "../ui/cx";
@@ -24,6 +25,7 @@ const BAND_BADGE: Record<SkillBand["band"], string> = {
 
 /** The orange "Weekly Premium"-style card: what CodeQuest recommends next, and why. */
 function NextUp({ me }: { me: Me }) {
+  const prefetch = usePrefetchMission();
   return (
     <section aria-labelledby="next-up" className="overflow-hidden rounded-lc bg-layer-1">
       <div className="bg-linear-to-br from-brand-bg-2 to-brand-bg p-4">
@@ -38,6 +40,8 @@ function NextUp({ me }: { me: Me }) {
               <li key={item.challenge_id}>
                 <Link
                   href={`/m/${item.challenge_id}`}
+                  onMouseEnter={() => prefetch(item.challenge_id)}
+                  onFocus={() => prefetch(item.challenge_id)}
                   className="group flex gap-3 rounded-lc-sm bg-black/20 p-2.5 transition-colors hover:bg-black/30"
                 >
                   <span

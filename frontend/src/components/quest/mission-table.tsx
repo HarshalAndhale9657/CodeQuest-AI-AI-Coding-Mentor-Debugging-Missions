@@ -3,6 +3,7 @@
 import { Bug, CheckCircle2, Lock, SearchX } from "lucide-react";
 import Link from "next/link";
 import { conceptLabel } from "@/lib/format";
+import { usePrefetchMission } from "@/lib/prefetch";
 import type { ChallengeSummary } from "@/lib/types";
 import { cx } from "../ui/cx";
 import { EmptyState, Skeleton } from "../ui/states";
@@ -14,6 +15,7 @@ export interface MissionRow extends ChallengeSummary {
 
 /** LeetCode problem-list rows: alternating #272727 stripes, status icon, title, difficulty. */
 export function MissionTable({ rows, recommended }: { rows: MissionRow[]; recommended: Set<string> }) {
+  const prefetch = usePrefetchMission();
   if (rows.length === 0) {
     return <EmptyState icon={<SearchX size={28} aria-hidden />} title="No missions match" text="Try another concept or clear the search." />;
   }
@@ -23,6 +25,8 @@ export function MissionTable({ rows, recommended }: { rows: MissionRow[]; recomm
         <li key={m.id}>
           <Link
             href={`/m/${m.id}`}
+            onMouseEnter={() => prefetch(m.id)}
+            onFocus={() => prefetch(m.id)}
             className={cx(
               "group grid h-11 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 rounded-lc px-4 transition-colors hover:bg-hover sm:grid-cols-[28px_minmax(0,1fr)_minmax(0,220px)_64px_56px]",
               i % 2 === 0 && "bg-row-alt",

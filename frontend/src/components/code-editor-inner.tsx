@@ -3,8 +3,14 @@
 import Editor, { loader, type BeforeMount, type OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEffect, useRef } from "react";
+import { EditorPlaceholder } from "./editor-placeholder";
 
 loader.config({ paths: { vs: "/monaco/vs" } });
+
+/** Starts downloading Monaco before the editor mounts; the editor reuses the same instance. */
+export function preloadMonaco(): Promise<unknown> {
+  return loader.init();
+}
 
 type Monaco = Parameters<OnMount>[1];
 
@@ -128,7 +134,7 @@ export default function CodeEditorInner({
       beforeMount={defineTheme}
       onMount={handleMount}
       onChange={(value) => onChange(value ?? "")}
-      loading={<div className="p-4 text-sm text-text-3">Loading editor…</div>}
+      loading={<EditorPlaceholder />}
       options={{
         fontSize: 14,
         fontFamily: 'Menlo, Monaco, Consolas, "Courier New", monospace',
