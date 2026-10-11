@@ -48,18 +48,27 @@
 
 ## New API contracts (A implements, B consumes; frozen at 14:00)
 
+✅ **Live now:** portfolio, imports, typing results. ⏳ Pending: settings/ai.
+
 ```
 GET  /api/me                      (exists) {user, skills[], mistakes{...}, ...}
-GET  /api/portfolio/{handle}      → {handle, name, verified: {concepts:[{id,name,band,elo,evidence:[submission_id]}],
-                                     mistakes_beaten:[{key,label,first_seen,last_seen,beaten:boolean}],
-                                     stats:{solved, hints_per_solve, debug_missions}},
-                                     imports: {codeforces?: {handle,rating,max_rating,solved,top_tags:[[tag,count]]},
-                                               leetcode?:   {handle,solved:{easy,medium,hard},top_tags:[[tag,count]]}},
-                                     typing?: {best_cpm, accuracy}}
-POST /api/imports                 {platform:"codeforces"|"leetcode", handle} → 202 {status:"queued"|"cached"}
+GET  /api/portfolio/{handle}      PUBLIC (no auth). handle = user.handle from /api/session or /api/me, e.g. "priya-3f9a1c"
+                                  → {handle, name,
+                                     verified: {concepts:[{concept, band:"ready"|"learning"|"almost"|"mastered", attempts, verified, p_median}],
+                                                all_concepts:[same shape],
+                                                mistakes:[{key, label, times, first_seen, last_seen, recurring, beaten}],  // first/last_seen = attempt number
+                                                stats:{solved, missions_total, hints_per_solve|null, debug_missions, attempts},
+                                                solved:[{id, title, tier}]},
+                                     imports: {codeforces?: {status:"ok"|"stale"|"error", handle, error|null, fetched,
+                                                             rating, max_rating, rank, solved, top_tags:[[tag,count]], concepts:[id]},
+                                               leetcode?:   {status, handle, error|null, fetched,
+                                                             solved:{easy,medium,hard,total}, top_tags:[[tag,count]], concepts:[id]}},
+                                     typing: {best_cpm, accuracy, runs} | null}
+                                  404 if the handle is unknown
+POST /api/imports                 {platform:"codeforces"|"leetcode", handle} → 202 {status:"queued"|"cached"}   (auth; poll the portfolio ~1-3 s)
 GET  /api/settings/ai             → {enabled:boolean, provider:string|null, budget_left_usd:number}
 POST /api/settings/ai             {enabled:boolean} → same shape
-POST /api/typing/results          {snippet_id, concept, cpm, accuracy, duration_ms, errors:{[char]:count}} → {best_cpm}
+POST /api/typing/results          {snippet_id, concept, cpm, accuracy (0-1), duration_ms, errors:{[char]:count}} → {best_cpm, accuracy, runs}
 ```
 The snippet corpus is static: `frontend/public/data/typing-snippets.json` (C writes it):
 `[{id, concept, title, code}]`, with 30–40 snippets of 3–12 lines each, real Python idioms, indented with 4 spaces.

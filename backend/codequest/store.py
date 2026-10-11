@@ -42,6 +42,28 @@ CREATE TABLE IF NOT EXISTS submissions (
     created REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS submissions_attempt ON submissions(attempt_id, created);
+CREATE TABLE IF NOT EXISTS imports (
+    user_id TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    handle TEXT NOT NULL,
+    status TEXT NOT NULL,
+    data TEXT,
+    error TEXT,
+    fetched REAL NOT NULL,
+    PRIMARY KEY (user_id, platform)
+);
+CREATE TABLE IF NOT EXISTS typing_results (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    snippet_id TEXT NOT NULL,
+    concept TEXT,
+    cpm REAL NOT NULL,
+    accuracy REAL NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    errors TEXT NOT NULL,
+    created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS typing_user ON typing_results(user_id, created);
 """
 
 
@@ -64,6 +86,10 @@ class Store:
     def _exec(self, sql: str, args: tuple = ()) -> None:
         with self._lock:
             self._db.execute(sql, args)
+
+    def _all(self, sql: str, args: tuple = ()) -> list[dict[str, Any]]:
+        with self._lock:
+            return [dict(r) for r in self._db.execute(sql, args).fetchall()]
 
     # ------------------------------------------------------------------ users
     def create_user(self, name: str, state: dict[str, Any]) -> dict[str, Any]:
@@ -136,3 +162,46 @@ class Store:
             cur = self._db.execute("UPDATE submissions SET status = 'error' WHERE status IN ('queued', 'running') "
                                    "AND created < ?", (cutoff,))
             return cur.rowcount
+
+    # ------------------------------------------------------------------ portfolio
+    def users_by_id_prefix(self, prefix: str) -> list[dict[str, Any]]:
+        return self._all("SELECT * FROM users WHERE id LIKE ?", (prefix + "%",))
+
+    def user_attempts(self, user_id: str) -> list[dict[str, Any]]:
+        return self._all("SELECT * FROM attempts WHERE user_id = ?", (user_id,))
+
+    def save_import(self, user_id: str, platform: str, handle: str, status: str,
+                    data: dict[str, Any] | None, error: str | None) -> None:
+        self._exec(
+            "INSERT INTO imports (user_id, platform, handle, status, data, error, fetched) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, platform) DO UPDATE SET "
+            "handle = excluded.handle, status = excluded.status, data = excluded.data, "
+            "error = excluded.error, fetched = excluded.fetched",
+            (user_id, platform, handle, status, json.dumps(data) if data is not None else None, error, time.time()))
+
+    def get_import(self, user_id: str, platform: str) -> dict[str, Any] | None:
+        row = self._one("SELECT * FROM imports WHERE user_id = ? AND platform = ?", (user_id, platform))
+        if row:
+            row["data"] = json.loads(row["data"]) if row["data"] else None
+        return row
+
+    def imports_for(self, user_id: str) -> list[dict[str, Any]]:
+        rows = self._all("SELECT * FROM imports WHERE user_id = ?", (user_id,))
+        for row in rows:
+            row["data"] = json.loads(row["data"]) if row["data"] else None
+        return rows
+
+    def add_typing_result(self, user_id: str, snippet_id: str, concept: str | None, cpm: float,
+                          accuracy: float, duration_ms: int, errors: dict[str, int]) -> None:
+        self._exec(
+            "INSERT INTO typing_results (id, user_id, snippet_id, concept, cpm, accuracy, duration_ms, errors, created) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (uuid.uuid4().hex, user_id, snippet_id, concept, cpm, accuracy, duration_ms, json.dumps(errors), time.time()))
+
+    def typing_summary(self, user_id: str) -> dict[str, Any] | None:
+        row = self._one(
+            "SELECT MAX(cpm) AS best_cpm, AVG(accuracy) AS accuracy, COUNT(*) AS runs "
+            "FROM typing_results WHERE user_id = ?", (user_id,))
+        if not row or not row["runs"]:
+            return None
+        return {"best_cpm": round(row["best_cpm"], 1), "accuracy": round(row["accuracy"], 3), "runs": row["runs"]}

@@ -16,6 +16,7 @@ from codequest.hints import LadderState, code_hash, gate, max_level, safe_hint
 from codequest.judge import JudgeResult, MistakeEvent, SubmissionTooLarge, TestOutcome, judge
 from codequest.learner import (LEVEL_PRIOR, LearnerState, attempt_score, concept_bands, finish_attempt, next_up,
                                record_mistakes, start_attempt)
+from codequest import portfolio
 from codequest.sandbox.runner import Runner
 from codequest.store import Store
 
@@ -67,6 +68,7 @@ class CodeQuestService:
         self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="judge")
         self._user_locks: dict[str, threading.Lock] = collections.defaultdict(threading.Lock)
         self._submit_limit = RateLimiter(RATE_PER_MINUTE)
+        self.fetchers = portfolio.FETCHERS  # tests swap in fakes; no network in CI
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=True)
@@ -81,7 +83,8 @@ class CodeQuestService:
         if persona == "priya" and "total" in self.challenges:
             finish_attempt(state, self.challenges["total"], 0.55)
         user = self.store.create_user(display, state.to_dict())
-        return {"token": user["token"], "user": {"id": user["id"], "name": display}}
+        return {"token": user["token"], "user": {"id": user["id"], "name": display,
+                                                 "handle": portfolio.public_handle(user)}}
 
     def user(self, token: str | None) -> dict[str, Any]:
         if not token:
@@ -247,7 +250,7 @@ class CodeQuestService:
     def me(self, user: dict[str, Any]) -> dict[str, Any]:
         state = self._state(user)
         return {
-            "user": {"id": user["id"], "name": user["name"]},
+            "user": {"id": user["id"], "name": user["name"], "handle": portfolio.public_handle(user)},
             "skills": concept_bands(state, self.challenges),
             "mistakes": {
                 "recurring": state.recurring,
@@ -259,6 +262,57 @@ class CodeQuestService:
             "next_up": next_up(state, self.challenges),
         }
 
+
+    # ------------------------------------------------------------------ portfolio
+    def portfolio(self, handle: str) -> dict[str, Any]:
+        prefix = portfolio.handle_id_prefix(handle)
+        matches = [u for u in self.store.users_by_id_prefix(prefix or "") if portfolio.public_handle(u) == handle] \
+            if prefix else []
+        if not matches:
+            raise ServiceError(404, "No portfolio with that handle.")
+        user = matches[0]
+        state = self._state(user)
+        bands = concept_bands(state, self.challenges)
+        hints = sum(len(_json(a["ladder"]).get("shown", [])) for a in self.store.user_attempts(user["id"])
+                    if a["ladder"])
+        solved = state.solved
+        debug_solved = [c for c in solved if c in self.challenges and self.challenges[c].type == "debug"]
+        imports = {}
+        for row in self.store.imports_for(user["id"]):
+            imports[row["platform"]] = {"status": row["status"], "handle": row["handle"], "error": row["error"],
+                                        "fetched": row["fetched"], **(row["data"] or {})}
+        return {
+            "handle": handle,
+            "name": user["name"],
+            "verified": {
+                "concepts": [b for b in bands if b["attempts"] or b["verified"]],
+                "all_concepts": bands,
+                "mistakes": portfolio.mistakes_timeline(state.history, state.recurring, state.beaten),
+                "stats": {"solved": len(solved), "missions_total": len(self.challenges),
+                          "hints_per_solve": round(hints / len(solved), 2) if solved else None,
+                          "debug_missions": len(debug_solved), "attempts": state.attempts},
+                "solved": [{"id": c, "title": self.challenges[c].title, "tier": self.challenges[c].tier}
+                           for c in solved if c in self.challenges],
+            },
+            "imports": imports,
+            "typing": self.store.typing_summary(user["id"]),
+        }
+
+    def request_import(self, user: dict[str, Any], platform: str, handle: str) -> dict[str, Any]:
+        if platform not in portfolio.PLATFORMS:
+            raise ServiceError(400, "Unsupported platform.")
+        if not portfolio.HANDLE_RE.match(handle or ""):
+            raise ServiceError(400, "That doesn't look like a valid handle.")
+        self.check_rate(user)
+        if portfolio.is_fresh(self.store.get_import(user["id"], platform), handle):
+            return {"status": "cached"}
+        self._pool.submit(portfolio.refresh_import, self.store, user["id"], platform, handle, self.fetchers)
+        return {"status": "queued"}
+
+    def typing_result(self, user: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+        self.store.add_typing_result(user["id"], body["snippet_id"], body.get("concept"), body["cpm"],
+                                     body["accuracy"], body["duration_ms"], body.get("errors", {}))
+        return self.store.typing_summary(user["id"]) or {}
 
 # ---------------------------------------------------------------------- serialisation helpers
 

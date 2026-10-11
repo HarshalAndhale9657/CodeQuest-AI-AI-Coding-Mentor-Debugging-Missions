@@ -35,6 +35,20 @@ class SubmissionIn(BaseModel):
     code: str = Field(min_length=1, max_length=64 * 1024)
 
 
+class ImportIn(BaseModel):
+    platform: Literal["codeforces", "leetcode"]
+    handle: str = Field(min_length=1, max_length=40)
+
+
+class TypingIn(BaseModel):
+    snippet_id: str = Field(min_length=1, max_length=80)
+    concept: str | None = Field(default=None, max_length=40)
+    cpm: float = Field(ge=0, le=3000)  # ~600 WPM: anything above is not human
+    accuracy: float = Field(ge=0, le=1)
+    duration_ms: int = Field(ge=500, le=3_600_000)
+    errors: dict[str, int] = Field(default_factory=dict, max_length=200)
+
+
 class ArenaIn(BaseModel):
     index: int = Field(ge=0, lt=len(arena.ATTACKS))
 
@@ -104,6 +118,18 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     @app.get("/api/me")
     def me(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.me(user)
+
+    @app.get("/api/portfolio/{handle}")
+    def get_portfolio(handle: str, s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.portfolio(handle)  # public: a portfolio is meant to be shared
+
+    @app.post("/api/imports", status_code=202)
+    def post_import(body: ImportIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.request_import(user, body.platform, body.handle)
+
+    @app.post("/api/typing/results")
+    def post_typing(body: TypingIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.typing_result(user, body.model_dump())
 
     @app.get("/api/arena/attacks")
     def attacks() -> list[dict[str, Any]]:
