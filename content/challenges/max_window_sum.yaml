@@ -41,3 +41,7 @@ references:
         if not nums or k <= 0 or k > len(nums):
             return 0
         return max(sum(nums[i:i + k]) for i in range(len(nums) - k + 1))
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  nums: {kind: list_int, values: [-1, 0, 2, 5], max_len: 4}
+  k: {kind: int, values: [1, 2, 3]}

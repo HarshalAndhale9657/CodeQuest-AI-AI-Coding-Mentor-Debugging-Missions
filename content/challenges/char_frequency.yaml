@@ -36,3 +36,6 @@ references:
 
     def char_frequency(s):
         return dict(Counter(s))
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  s: {kind: str, alphabet: "ab", max_len: 3}

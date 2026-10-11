@@ -2,7 +2,8 @@
 
 import pytest
 
-from codequest.content import public_challenge
+from codequest.analysis.probe import find_counterexample
+from codequest.content import load_all, public_challenge
 from codequest.judge import judge
 
 
@@ -24,9 +25,10 @@ def test_public_view_has_no_secrets(challenges):
             assert ref.strip() not in text
 
 
-@pytest.mark.parametrize("challenge_id", [
-    "class_average", "total", "largest", "count_evens", "binary_search", "factorial", "debug_average",
-])
+ALL_IDS = sorted(load_all())
+
+
+@pytest.mark.parametrize("challenge_id", ALL_IDS)
 def test_references_pass_all_tests(challenges, runner, challenge_id):
     ch = challenges[challenge_id]
     for ref in ch.references:
@@ -36,7 +38,25 @@ def test_references_pass_all_tests(challenges, runner, challenge_id):
         assert result.mistakes == []
 
 
-def test_debug_starter_is_actually_buggy(challenges, runner):
-    ch = challenges["debug_average"]
-    result = judge(ch, ch.starter_code, runner)
-    assert not result.all_passed
+@pytest.mark.parametrize("challenge_id", ALL_IDS)
+def test_starter_code_does_not_already_pass(challenges, runner, challenge_id):
+    ch = challenges[challenge_id]
+    assert not judge(ch, ch.starter_code, runner).all_passed
+
+
+@pytest.mark.parametrize("challenge_id", [i for i in ALL_IDS if load_all()[i].small_inputs])
+def test_counterexample_finder_never_flags_a_reference(challenges, runner, challenge_id):
+    ch = challenges[challenge_id]
+    for ref in ch.references:
+        assert find_counterexample(ch, ref, runner) is None
+
+
+@pytest.mark.parametrize("challenge_id", [i for i in ALL_IDS if load_all()[i].type == "debug" and load_all()[i].small_inputs])
+def test_counterexample_finder_exposes_debug_starters(challenges, runner, challenge_id):
+    ch = challenges[challenge_id]
+    assert find_counterexample(ch, ch.starter_code, runner) is not None
+
+
+def test_tiers_and_debug_missions_cover_the_ladder(challenges):
+    assert {c.tier for c in challenges.values()} == {1, 2, 3, 4, 5}
+    assert sum(c.type == "debug" for c in challenges.values()) >= 5

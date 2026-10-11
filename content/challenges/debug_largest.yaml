@@ -45,3 +45,6 @@ references:
   - |
     def largest(nums):
         return max(nums) if nums else None
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  nums: {kind: list_int, values: [-3, -1, 0, 2], max_len: 3}

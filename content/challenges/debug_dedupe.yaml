@@ -39,3 +39,6 @@ references:
                 seen.add(x)
                 res.append(x)
         return res
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  items: {kind: list_int, values: [1, 2, 3], max_len: 4}

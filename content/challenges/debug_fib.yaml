@@ -44,3 +44,6 @@ references:
         for _ in range(2, n + 1):
             a, b = b, a + b
         return b
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  n: {kind: int, values: [0, 1, 2, 3, 4, 5, 6]}

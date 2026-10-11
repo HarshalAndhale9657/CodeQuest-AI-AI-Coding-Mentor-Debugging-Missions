@@ -43,3 +43,6 @@ references:
             i += 1
             j -= 1
         return True
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  s: {kind: str, alphabet: "aAb ,", max_len: 4}

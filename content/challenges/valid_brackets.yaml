@@ -51,3 +51,6 @@ references:
             elif not stack or pairs[stack.pop()] != char:
                 return False
         return not stack
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  s: {kind: str, alphabet: "()[]", max_len: 4}

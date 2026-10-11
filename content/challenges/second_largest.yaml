@@ -42,3 +42,6 @@ references:
             elif x != first and (second is None or x > second):
                 second = x
         return second
+# Domain for the counterexample finder (bounded small-input search, smallest first)
+small_inputs:
+  nums: {kind: list_int, values: [-1, 0, 2, 5], max_len: 3}
