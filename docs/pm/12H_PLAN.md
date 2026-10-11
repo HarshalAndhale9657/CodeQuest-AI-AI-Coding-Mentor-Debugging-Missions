@@ -22,7 +22,7 @@
 |---|---|
 | R1–R10 (the brief): sandbox, per-test verdicts, hidden-test secrecy, explanations, hint ladder plus leak guard, mistake memory, adaptation, concept Elo | ✅ Built and verified |
 | Counterexample finder (S1), Sandbox Arena (S3), auto debug mission on a recurring mistake (part of S2) | ✅ Built |
-| Docker runner in the demo (the Arena currently says "not sandboxed") | ❌ **A, P0** |
+| Docker runner in the demo (the Arena reports runner: docker, sandboxed: true) | ✅ **Built and verified (A)**: `--network none`, read-only FS, non-root, 8/8 attacks contained |
 | Skill map + Mistake Memory page (`/api/me` exists, no UI) | ❌ **B, P0** |
 | Results column layout (cramped right column) | ❌ B, P1 |
 | 7 → 15 missions + 3 more debug missions (20 missions total) | ✅ **Built and verified (C)** |
