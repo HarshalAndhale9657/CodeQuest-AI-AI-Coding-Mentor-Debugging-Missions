@@ -44,7 +44,8 @@
         <p class="muted">In CodeQuest, open <strong>Settings → LeetCode Companion</strong>, generate a code and type it here.</p>
         <form id="pair-form">
           <input id="pair-code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="······" aria-label="Pairing code" required />
-          <button id="pair-btn" type="submit" class="primary">Connect</button>
+          <!-- disabled until sidepanel.js is ready: an early Enter must not trigger a native form submit (page reload) -->
+          <button id="pair-btn" type="submit" class="primary" disabled>Connect</button>
         </form>
         <p id="pair-status" class="muted" role="status"></p>
       </div>

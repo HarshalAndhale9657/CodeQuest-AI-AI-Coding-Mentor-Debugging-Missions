@@ -28,7 +28,8 @@ from codequest.store import Store
 log = logging.getLogger("codequest.service")
 
 RATE_PER_MINUTE = 6
-CHAT_PER_MINUTE = 8
+CHAT_PER_MINUTE = 30        # all tutor messages (rule replies are free, this only protects the server)
+CHAT_AI_PER_MINUTE = 8      # paid model calls; past this the learner gets the rule-based reply
 AI_SPENT_KEY = "ai_spent_usd"
 AI_WORDED_LEVEL = 1
 
@@ -107,6 +108,7 @@ class CodeQuestService:
         self.tutor = CompanionTutor(lambda: self.ai, api_key=os.environ.get("OPENAI_API_KEY") or None,
                                     model=os.environ.get("CQ_CHAT_MODEL", CHAT_MODEL_DEFAULT))
         self._chat_limit = RateLimiter(CHAT_PER_MINUTE)
+        self._chat_ai_limit = RateLimiter(CHAT_AI_PER_MINUTE)
         self.fetchers = portfolio.FETCHERS  # tests swap in fakes; no network in CI
 
     def shutdown(self) -> None:
@@ -336,7 +338,15 @@ class CodeQuestService:
             raise ServiceError(429, "That's a lot of questions in a minute. Try the hint you have first, "
                                     "then ask again.", **exc.extra) from exc
         fresh = self.store.user_by_token(user["token"]) or user
-        return self.tutor.answer(req, ai_allowed=self._state(fresh).ai_enabled).to_dict()
+
+        def ai_quota() -> bool:
+            try:
+                self._chat_ai_limit.check(user["id"])
+                return True
+            except ServiceError:
+                return False  # degrade to the rule-based reply instead of an error
+
+        return self.tutor.answer(req, ai_allowed=self._state(fresh).ai_enabled, ai_quota=ai_quota).to_dict()
 
     def ext_summary(self, user: dict[str, Any]) -> dict[str, Any]:
         """Compact profile for the extension panel (reads fresh state: the extension user row is a join)."""

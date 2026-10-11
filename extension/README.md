@@ -27,7 +27,7 @@ Requests for the answer and prompt-injection phrasing are refused by rules befor
 
 ## Privacy in short
 
-- The problem statement and your code are read from the page only when you message the tutor (or on Submit with Auto-log on), sent only to your CodeQuest server, used for that reply, and never stored. Only Python code is logged.
+- The problem statement and your code are read from the page only when you message the tutor (or on Submit with Auto-log on) and sent to your CodeQuest server. When the AI tutor is on, the server forwards them to the configured model provider (OpenAI) for that one reply. They are never stored. Only Python code is logged.
 - LeetCode's own hints and solutions are never read. Chats live in session storage.
 - Disabled on `leetcode.com/contest/*`.
 - All text is rendered with `textContent`; the extension page CSP allows only its own scripts.
@@ -43,4 +43,7 @@ python extension-tests/server.py         # http://localhost:5600 (imitates leetc
 #   http://localhost:5600/problems/two-sum/?token=<extension token>&api=http://localhost:8000
 # Side panel UI with stubbed chrome APIs:
 #   http://localhost:5600/tests/harness.html?scenario=python|java|contest
+# Automated side-panel suite, 44 checks (run against an AI-off API so it's free and deterministic):
+#   OPENAI_API_KEY= CQ_ALLOWED_ORIGINS=http://localhost:5600 uvicorn codequest.api:app --port 8002
+#   http://localhost:5600/tests/harness.html?autotest=1&code=<pairing code>&api=http://localhost:8002
 ```

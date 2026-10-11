@@ -278,7 +278,9 @@ class CompanionTutor:
     def available(self) -> bool:
         return self.provider is not None and self.ai.enabled
 
-    def answer(self, req: ChatRequest, ai_allowed: bool) -> ChatReply:
+    def answer(self, req: ChatRequest, ai_allowed: bool,
+               ai_quota: Callable[[], bool] | None = None) -> ChatReply:
+        """`ai_quota` is consulted only when a model call would be made; False means "use the rules reply"."""
         mode = req.mode if req.mode in MODES else "chat"
         req.mode = mode
         suggestions = SUGGESTIONS[mode]
@@ -292,6 +294,8 @@ class CompanionTutor:
         reply, findings, notes = _deterministic(req)
         fallback = ChatReply(reply, "rules", mode, suggestions=suggestions, findings=findings)
         if not (ai_allowed and self.available and self.ai.reserve(RESERVE_USD)):
+            return fallback
+        if ai_quota is not None and not ai_quota():
             return fallback
 
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]

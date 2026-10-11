@@ -161,8 +161,17 @@ def test_chat_endpoint_auth_validation_and_rate_limit(paired):
     assert client.post("/api/ext/chat", json=body | {"slug": "Bad Slug"}, headers=ext_h).status_code == 422
     first = client.post("/api/ext/chat", json=body, headers=ext_h).json()
     assert first["source"] == "rules" and first["reply"].startswith("Hint 1 of 3") and first["suggestions"]
-    codes = [client.post("/api/ext/chat", json=body, headers=ext_h).status_code for _ in range(8)]
-    assert codes.count(429) >= 1
+    codes = [client.post("/api/ext/chat", json=body, headers=ext_h).status_code for _ in range(30)]
+    assert codes.count(200) == 29 and codes[-1] == 429  # rule replies are free; only floods are refused
+
+
+def test_ai_quota_degrades_to_rules_instead_of_erroring(paired):
+    client, ext_h, _, service = paired
+    service.ai = AILayer(providers=[wording_provider])
+    service.tutor.provider = fake(["Good start! Which numbers have you already seen?"])
+    sources = [client.post("/api/ext/chat", json={"mode": "chat", "message": f"question {i}", "slug": "two-sum"},
+                           headers=ext_h).json()["source"] for i in range(10)]
+    assert sources[:8] == ["ai"] * 8 and sources[8:] == ["rules", "rules"]
 
 
 def test_chat_endpoint_uses_ai_when_available(paired):

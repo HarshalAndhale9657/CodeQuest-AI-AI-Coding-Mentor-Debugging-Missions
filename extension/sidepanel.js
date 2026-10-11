@@ -375,7 +375,7 @@ function runMode(mode) {
 
 async function sendToTutor(mode, text, { retry = false } = {}) {
   const p = state.problem;
-  if (state.sending || p.kind !== "problem" || !p.meta) return;
+  if (!state.token || state.sending || p.kind !== "problem" || !p.meta) return; // never call the tutor unpaired
   if (mode === "hint" && state.chat.hintLevel > MAX_HINT_LEVEL) return;
   const chat = state.chat;
   const slug = p.slug;
@@ -716,6 +716,7 @@ async function init() {
     render();
   });
   $("pair-form").addEventListener("submit", onPair);
+  $("pair-btn").disabled = false; // the handler is attached: safe to submit now
   $("tab-chat").addEventListener("click", () => switchView("chat"));
   $("tab-progress").addEventListener("click", () => switchView("progress"));
   $("chat-form").addEventListener("submit", onSubmitChat);
