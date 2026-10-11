@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import json
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -19,10 +20,12 @@ from codequest.learner import (LEVEL_PRIOR, LearnerState, attempt_score, concept
                                record_mistakes, start_attempt)
 from codequest import portfolio
 from codequest.ai import AILayer
+from codequest.companion_chat import CHAT_MODEL_DEFAULT, ChatRequest, CompanionTutor
 from codequest.sandbox.runner import Runner
 from codequest.store import Store
 
 RATE_PER_MINUTE = 6
+CHAT_PER_MINUTE = 8
 AI_SPENT_KEY = "ai_spent_usd"
 AI_WORDED_LEVEL = 1
 
@@ -97,6 +100,10 @@ class CodeQuestService:
         # off unless an API key is configured; spend survives restarts so the budget is a real cap
         self.ai = AILayer(spent_usd=_float(store.get_kv(AI_SPENT_KEY)),
                           on_spend=lambda spent: store.set_kv(AI_SPENT_KEY, repr(spent)))
+        # LeetCode Companion chat tutor: shares the AI layer's budget, kill switch and counters.
+        self.tutor = CompanionTutor(lambda: self.ai, api_key=os.environ.get("OPENAI_API_KEY") or None,
+                                    model=os.environ.get("CQ_CHAT_MODEL", CHAT_MODEL_DEFAULT))
+        self._chat_limit = RateLimiter(CHAT_PER_MINUTE)
         self.fetchers = portfolio.FETCHERS  # tests swap in fakes; no network in CI
 
     def shutdown(self) -> None:
@@ -312,6 +319,15 @@ class CodeQuestService:
             self.store.save_state(user["id"], state.to_dict())
         return self.ai_status(user)
 
+    def ext_chat(self, user: dict[str, Any], req: ChatRequest) -> dict[str, Any]:
+        try:
+            self._chat_limit.check(user["id"])
+        except ServiceError as exc:
+            raise ServiceError(429, "That's a lot of questions in a minute. Try the hint you have first, "
+                                    "then ask again.", **exc.extra) from exc
+        fresh = self.store.user_by_token(user["token"]) or user
+        return self.tutor.answer(req, ai_allowed=self._state(fresh).ai_enabled).to_dict()
+
     def ext_summary(self, user: dict[str, Any]) -> dict[str, Any]:
         """Compact profile for the extension panel (reads fresh state: the extension user row is a join)."""
         fresh = self.store.user_by_token(user["token"]) or user
@@ -321,6 +337,7 @@ class CodeQuestService:
             "recurring": state.recurring,
             "beaten": state.beaten,
             "solved": len(state.solved),
+            "ai": {"available": self.tutor.available, "enabled": self.tutor.available and state.ai_enabled},
             "next_up": [{"challenge_id": n["challenge_id"], "title": n["title"], "reason": n["reason"]}
                         for n in next_up(state, self.challenges)],
         }

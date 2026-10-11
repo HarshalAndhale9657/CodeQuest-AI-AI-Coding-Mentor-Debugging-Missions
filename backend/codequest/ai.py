@@ -43,8 +43,13 @@ FAILURES_TO_OPEN = 3          # circuit breaker: after 3 failures in a row...
 COOLDOWN_S = 60               # ...skip the provider for a minute
 CACHE_SIZE = 512
 
-# USD per 1M tokens (input, output)
-PRICES = {"gpt-4.1-nano": (0.10, 0.40), "gemini-2.0-flash-lite": (0.0, 0.0)}
+# USD per 1M tokens (input, output), OpenAI list prices checked 2026-10-11
+PRICES = {
+    "gpt-4.1-nano": (0.10, 0.40),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4o-mini": (0.15, 0.60),
+    "gemini-2.0-flash-lite": (0.0, 0.0),
+}
 
 Provider = Callable[[str, str], "tuple[str, float]"]
 
@@ -168,6 +173,25 @@ class AILayer:
     def _reject(self) -> None:
         with self._lock:
             self.blocked += 1
+
+    # ------------------------------------------------------------------ shared budget (used by the chat tutor)
+    def reserve(self, amount_usd: float) -> bool:
+        """True if a call costing up to `amount_usd` fits in the remaining budget."""
+        with self._lock:
+            return self.enabled and self.spent_usd + amount_usd <= self.budget_usd
+
+    def charge(self, cost_usd: float) -> None:
+        with self._lock:
+            self.spent_usd += max(0.0, float(cost_usd))
+            spent = self.spent_usd
+        if self.on_spend is not None:
+            try:
+                self.on_spend(spent)
+            except Exception:  # noqa: BLE001 - persistence must never break a reply
+                pass
+
+    def record_rejection(self) -> None:
+        self._reject()
 
     def rephrase(self, note: str, description: str, guard: Callable[[str], bool]) -> str | None:
         """Return a checked rewording of `note`, or None to keep the deterministic text."""

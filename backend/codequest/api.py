@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from codequest import arena, extension
 from codequest.ai import load_dotenv
+from codequest.companion_chat import MODES, ChatRequest
 from codequest.content import load_all
 from codequest.sandbox.runner import Runner, make_runner
 from codequest.service import CodeQuestService, ServiceError
@@ -70,6 +71,25 @@ class ExtApproachIn(BaseModel):
 class ExtHintIn(BaseModel):
     tags: list[str] = TagList
     level: int = Field(default=1, ge=1, le=5)
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
+class ExtChatIn(BaseModel):
+    mode: Literal[MODES] = "chat"  # type: ignore[valid-type]
+    message: str = Field(default="", max_length=2000)
+    slug: str = Field(default="", max_length=120, pattern=r"^[a-z0-9-]*$")
+    title: str = Field(default="", max_length=200)
+    difficulty: str = Field(default="", max_length=20)
+    tags: list[str] = Field(default_factory=list, max_length=30)
+    statement: str = Field(default="", max_length=12000)
+    code: str = Field(default="", max_length=32000)
+    language: str = Field(default="", max_length=30)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+    hint_level: int = Field(default=1, ge=1, le=3)
 
 
 class ExtSyncIn(BaseModel):
@@ -213,6 +233,12 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     @app.post("/api/ext/sync")
     def ext_sync(body: ExtSyncIn, user=Depends(ext_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.ext_sync(user, body.slug, body.tags, body.verdict, body.code)
+
+    @app.post("/api/ext/chat")
+    def ext_chat(body: ExtChatIn, user=Depends(ext_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        req = ChatRequest(**body.model_dump(exclude={"history"}),
+                          history=[t.model_dump() for t in body.history])
+        return s.ext_chat(user, req)
 
     @app.get("/api/ext/me")
     def ext_me(user=Depends(ext_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:

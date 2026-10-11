@@ -1,4 +1,11 @@
-import pytest
+import os
+
+# Tests must be hermetic: never spend real API credit or depend on a network. An empty value stops
+# codequest.api's .env loader (it only fills unset variables) and leaves every AI provider off.
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["GEMINI_API_KEY"] = ""
+
+import pytest  # noqa: E402
 
 from codequest.content import load_all
 from codequest.sandbox.runner import make_runner
