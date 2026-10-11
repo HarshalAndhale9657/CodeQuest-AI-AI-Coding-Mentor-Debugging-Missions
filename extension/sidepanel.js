@@ -14,7 +14,7 @@ import {
   trimStored,
 } from "./lib/chat.js";
 
-const DEFAULT_API = "http://localhost:8000";
+const DEFAULT_API = "https://codequest-api-31eg.onrender.com";
 const STATEMENT_LIMIT = 8000;
 const $ = (id) => document.getElementById(id);
 

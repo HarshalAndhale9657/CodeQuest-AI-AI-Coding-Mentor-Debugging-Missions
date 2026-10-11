@@ -3,7 +3,7 @@
 // is sent to the CodeQuest server automatically only when the learner turned "Auto-log" on.
 import { parseSubmission, describeSync } from "./lib/submission.js";
 
-const DEFAULT_API = "http://localhost:8000";
+const DEFAULT_API = "https://codequest-api-31eg.onrender.com";
 const SEEN_LIMIT = 50;
 
 chrome.runtime.onInstalled.addListener(() => {

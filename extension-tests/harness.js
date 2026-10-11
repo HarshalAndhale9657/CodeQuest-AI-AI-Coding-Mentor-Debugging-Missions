@@ -59,7 +59,8 @@ function area(name, store) {
 }
 const localStore = {};
 const sessionStore = {};
-if (params.get("api")) localStore.apiBase = params.get("api"); // e.g. an AI-off test server on another port
+// Tests always talk to a local server, never the deployed default; ?api= picks another port (e.g. AI off).
+localStore.apiBase = params.get("api") || "http://localhost:8000";
 const page = { url: URLS[scenario], editor: EDITORS[scenario] ?? null, failNextFetch: false };
 
 // Test controls: simulate the service worker, tab switches and editor changes.

@@ -8,7 +8,7 @@
 | **Version** | 0.3.0 (`extension/manifest.json`) |
 | **Minimum browser** | Chrome 116+ (any Chromium browser with the `sidePanel` API, e.g. current Microsoft Edge) |
 | **Works on** | `https://leetcode.com/problems/*` (switched off on `leetcode.com/contest/*`) |
-| **Talks to** | Your CodeQuest server only (default `http://localhost:8000`) |
+| **Talks to** | Your CodeQuest server only (default: the deployed API, `https://codequest-api-31eg.onrender.com`) |
 | **Code-review languages** | Python (static mistake detectors). The chat, hints, approach check, edge cases and complexity work for any language |
 
 ---
@@ -102,7 +102,7 @@ python -m pip install -e ".[dev]"
 python -m uvicorn codequest.api:app --port 8000
 ```
 
-The extension already has permission to reach `http://localhost:8000` and `http://127.0.0.1:8000`. For a deployed server see [§10](#10-configuration).
+The panel talks to the deployed API (`https://codequest-api-31eg.onrender.com`) by default. To use your local server, open the panel's **Settings** and enter `http://localhost:8000`. The extension already has permission to reach it and `http://127.0.0.1:8000`. For any other server see [§10](#10-configuration).
 
 ### 3.4 Updating
 
@@ -308,7 +308,8 @@ The model defaults to `gpt-4.1-mini` (set `CQ_CHAT_MODEL` to change it). With no
 | `storage` | `local`: server URL, extension token, Auto-log switch, last submission. `session`: chats per problem and the last submitted code (cleared when the browser closes) |
 | `scripting` | Runs the two read-only page functions that fetch problem metadata and read the editor (§6.2) |
 | Host `https://leetcode.com/*` | Content scripts for submission detection, and access to the problem tab |
-| Host `http://localhost:8000/*`, `http://127.0.0.1:8000/*` | The default local CodeQuest server |
+| Host `https://codequest-api-31eg.onrender.com/*` | The default (deployed) CodeQuest API |
+| Host `http://localhost:8000/*`, `http://127.0.0.1:8000/*` | A local CodeQuest server during development |
 | Optional host `https://*/*` | Requested **at runtime, for one origin only**, when you set a deployed server URL in Settings. Plain `http` is refused for non-local servers |
 
 Not requested: `tabs` history, cookies, `webRequest`, `<all_urls>` content scripts, or any remote code. The extension page CSP is `script-src 'self'; object-src 'none'; base-uri 'none'`.
@@ -336,7 +337,9 @@ Other safeguards:
 
 ## 10. Configuration
 
-### Point the panel at a deployed server
+### Point the panel at a different server
+
+The default is the deployed API, `https://codequest-api-31eg.onrender.com`. It's the API origin, not the website (`https://codequest-ai-blond.vercel.app`), which answers `/api` calls with 404.
 
 1. Open the panel, click the **gear** icon.
 2. Enter the server origin, e.g. `https://api.codequest.example.com`, and press **Save**.
@@ -359,6 +362,7 @@ Other safeguards:
 | Symptom | Cause | Fix |
 |---|---|---|
 | "Can't reach the CodeQuest server at http://localhost:8000" | API not running, or a different port | Start `uvicorn codequest.api:app --port 8000`, or set the right URL in panel Settings |
+| "Request failed (404)" when pairing | The server URL is the CodeQuest **website** (e.g. `https://codequest-ai-blond.vercel.app`), which has no `/api` routes | Set the server to the API origin in panel Settings (default: `https://codequest-api-31eg.onrender.com`) |
 | "That pairing code is invalid or has expired" | Code older than 10 minutes, or already used | Generate a new code in web **Settings** |
 | "The extension was disconnected. Pair it again." | Token expired (7 days) or the server database was reset | Pair again |
 | Panel says *No problem open* | The active tab is not a `leetcode.com/problems/...` page | Open a problem, or click into its tab |
@@ -387,6 +391,7 @@ CQ_ALLOWED_ORIGINS=http://localhost:5600 python -m uvicorn codequest.api:app --p
 |---|---|---|
 | **Pipeline** | `http://localhost:5600/problems/two-sum/?token=<extension token>&api=http://localhost:8000` | The full path hook → validator → service-worker logic → API, 17 checks |
 | **Side panel UI** | `http://localhost:5600/tests/harness.html?scenario=python` (also `java`, `contest`) | The real panel with stubbed `chrome.*` APIs, for each scenario |
+| **Side panel suite** | `http://localhost:5600/tests/harness.html?autotest=1&code=<pairing code>&api=http://localhost:8002` | 44 automated checks: pairing, hints, approach routing, review, jailbreak refusal, HTML injection, submission cards, problem switching, network failure and retry. Run it against an AI-off API (`OPENAI_API_KEY= ... --port 8002`) so it is deterministic and free. Generate the pairing code last: a new code cancels the previous one |
 
 Server-side behaviour (pairing, token scope, sync fusion rule, chat refusals, output guard, budget sharing) is covered by `backend/tests/test_extension.py` and `backend/tests/test_companion_chat.py`.
 

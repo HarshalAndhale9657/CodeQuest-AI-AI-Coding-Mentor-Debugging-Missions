@@ -6,11 +6,11 @@ Your CodeQuest tutor on LeetCode: a side-panel chat that knows which problem you
 
 ## Install (unpacked)
 
-1. Start the CodeQuest API (default `http://localhost:8000`).
+1. The panel uses the deployed API (`https://codequest-api-31eg.onrender.com`) by default. For local development, start the API (`http://localhost:8000`) and enter that URL in the panel's **Settings** (gear icon).
 2. Open `chrome://extensions` (or `edge://extensions`), switch on **Developer mode**, click **Load unpacked**, and choose this `extension/` folder.
 3. Pin **CodeQuest Companion for LeetCode** and click its icon to open the side panel.
 4. In the CodeQuest web app, open **Settings → LeetCode Companion**, click **Generate pairing code**, and type the 6-character code into the panel. The code works once and expires after 10 minutes; the extension token lasts 7 days.
-5. For a deployed server, open the panel's **Settings** (gear icon) and enter its `https://` origin. Chrome asks for permission to reach that origin.
+5. For a different deployed server, open the panel's **Settings** and enter its API `https://` origin (not the website's). Chrome asks for permission to reach that origin.
 
 After pulling changes, press **Reload** on the extension card and reload any open LeetCode tabs.
 
