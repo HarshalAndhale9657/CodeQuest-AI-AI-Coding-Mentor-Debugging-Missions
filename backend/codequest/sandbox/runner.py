@@ -281,8 +281,20 @@ class DockerRunner:
         return raw
 
 
+def docker_available(image: str, docker: str = "docker") -> bool:
+    """True when the daemon answers and the judge image is present."""
+    try:
+        probe = subprocess.run([docker, "image", "inspect", image], capture_output=True, timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return probe.returncode == 0
+
+
 def make_runner(kind: str | None = None) -> Runner:
-    kind = (kind or os.environ.get("CQ_RUNNER", "local")).lower()
+    kind = (kind or os.environ.get("CQ_RUNNER", "auto")).lower()
+    if kind == "auto":
+        # prefer the OS sandbox; degrade to the restricted local runner instead of failing
+        kind = "docker" if docker_available(os.environ.get("CQ_DOCKER_IMAGE", "codequest-judge:latest")) else "local"
     if kind == "docker":
         return DockerRunner(
             image=os.environ.get("CQ_DOCKER_IMAGE", "codequest-judge:latest"),

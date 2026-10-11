@@ -2,7 +2,7 @@
 
 Run locally:  uvicorn codequest.api:app --reload   (from the backend/ directory)
 Environment:
-    CQ_RUNNER           local | docker   (deployments MUST use docker)
+    CQ_RUNNER           auto | local | docker   (auto = docker if the judge image exists; deployments MUST use docker)
     CQ_DB_PATH          SQLite file (default: codequest.db)
     CQ_ALLOWED_ORIGINS  comma-separated exact origins for CORS (default: http://localhost:3000)
 """

@@ -2,7 +2,9 @@
 #   docker build -f runner/Dockerfile -t codequest-judge:latest .
 # The API starts one container per test with the hardening flags in
 # backend/codequest/sandbox/runner.py (no network, read-only FS, non-root, limits).
-FROM python:3.12-slim
+# BASE can point at any local Python image when Docker Hub is unreachable
+ARG BASE=python:3.12-slim
+FROM ${BASE}
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONIOENCODING=utf-8

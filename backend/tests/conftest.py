@@ -1,12 +1,13 @@
 import pytest
 
 from codequest.content import load_all
-from codequest.sandbox.runner import LocalRunner
+from codequest.sandbox.runner import make_runner
 
 
 @pytest.fixture(scope="session")
 def runner():
-    return LocalRunner()
+    # CQ_RUNNER=docker runs the whole suite inside the hardened container
+    return make_runner()
 
 
 @pytest.fixture(scope="session")
