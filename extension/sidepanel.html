@@ -27,7 +27,7 @@
       <p class="muted">In CodeQuest, choose <strong>Connect LeetCode Companion</strong> and type the 6-character code here.</p>
       <form id="pair-form" class="row">
         <input id="pair-code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123" aria-label="Pairing code" required />
-        <button type="submit">Connect</button>
+        <button id="pair-btn" type="submit">Connect</button>
       </form>
       <p id="pair-status" class="muted" role="status"></p>
     </section>
@@ -90,6 +90,7 @@
       </div>
     </section>
 
+    <p id="panel-error" class="error small" role="alert" hidden></p>
     <footer class="muted small">Your code leaves the browser only when you press a button or switch on Auto-log. Disabled during contests.</footer>
     <script src="sidepanel.js" type="module"></script>
   </body>

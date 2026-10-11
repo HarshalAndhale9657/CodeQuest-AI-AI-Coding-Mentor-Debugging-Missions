@@ -322,18 +322,29 @@ async function onPair(event) {
   const code = $("pair-code").value.trim().toUpperCase();
   const status = $("pair-status");
   if (!/^[A-Z0-9]{6}$/.test(code)) {
+    status.className = "error";
     status.textContent = "The code has 6 letters or digits.";
     return;
   }
+  const button = $("pair-btn");
+  setBusy(button, true, "Connecting…");
+  status.className = "muted";
+  status.textContent = `Connecting to ${state.apiBase}…`;
+  let data;
   try {
-    const data = await api("/api/ext/pair", { code });
-    await saveSettings({ token: data.token });
-    status.textContent = "";
-    render();
-    await Promise.all([refreshActiveTab(), refreshMemory()]);
+    data = await api("/api/ext/pair", { code });
   } catch (err) {
-    status.textContent = err instanceof ApiError ? err.message : "Pairing failed.";
+    status.className = "error";
+    status.textContent = err instanceof ApiError ? err.message : `Pairing failed: ${err?.message ?? err}`;
+    return;
+  } finally {
+    setBusy(button, false, "Connect");
   }
+  await saveSettings({ token: data.token });
+  status.textContent = "";
+  render();
+  // Pairing succeeded; problems loading the tab or memory are reported by those views, not as a pairing failure.
+  await Promise.allSettled([refreshActiveTab(), refreshMemory()]);
 }
 
 async function onApproach() {
@@ -525,7 +536,17 @@ async function init() {
   chrome.tabs.onUpdated.addListener((tabId, info) => {
     if (tabId === state.tabId && info.url) refreshActiveTab();
   });
-  await Promise.all([refreshActiveTab(), refreshMemory()]);
+  await Promise.allSettled([refreshActiveTab(), refreshMemory()]);
 }
 
-init();
+function showPanelError(message) {
+  const bar = $("panel-error");
+  if (!bar) return;
+  bar.textContent = `Something went wrong: ${message}. Reload the extension, and if it persists, report this message.`;
+  bar.hidden = false;
+}
+
+window.addEventListener("error", (event) => showPanelError(event.message || "script error"));
+window.addEventListener("unhandledrejection", (event) => showPanelError(event.reason?.message ?? String(event.reason)));
+
+init().catch((error) => showPanelError(error?.message ?? String(error)));
