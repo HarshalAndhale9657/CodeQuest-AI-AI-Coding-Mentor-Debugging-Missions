@@ -19,7 +19,15 @@ ATTACKS = {
     "infinite_loop": "def total(nums):\n    while True:\n        pass\n",
     "sleep": "import time\ndef total(nums):\n    time.sleep(1000)\n",
     "output_flood": "def total(nums):\n    while True:\n        print('x' * 10000)\n",
+    "list_dirs": "import os\ndef total(nums):\n    return len(os.listdir('/'))\n",
+    "kill_group": "import os\ndef total(nums):\n    os.killpg(0, 9)\n",
+    "fork": "import os\ndef total(nums):\n    os.fork()\n    return 0\n",
+    "ctypes": "import ctypes\ndef total(nums):\n    ctypes.CDLL(None)\n",
+    "memory_bomb": "def total(nums):\n    x = [0] * (10 ** 10)\n    return 0\n",
+    "recursion": "def total(nums):\n    return total(nums)\n",
 }
+BLOCKED = {"read_file", "read_env_file", "network", "socket", "subprocess", "os_system", "write_file",
+           "list_dirs", "kill_group", "fork", "ctypes"}
 
 
 @pytest.mark.parametrize("name", sorted(ATTACKS))
@@ -28,11 +36,14 @@ def test_attack_is_contained(challenges, runner, name):
     assert not any(o.status == "passed" for o in result.outcomes if o.expected not in (0,))
     statuses = {o.status for o in result.outcomes}
     assert statuses <= {"runtime_error", "timeout", "wrong_output", "passed"}
-    if name in {"read_file", "read_env_file", "network", "socket", "subprocess", "os_system", "write_file"}:
+    if name in BLOCKED:
         first = result.outcomes[0]
         assert first.status == "runtime_error" and first.subtype == "blocked", (name, first.exc_type, first.exc_message)
     if name in {"infinite_loop", "sleep"}:
         assert result.outcomes[0].status == "timeout"
+    if name == "memory_bomb":
+        first = result.outcomes[0]
+        assert first.status == "runtime_error", (first.status, first.subtype, first.exc_type)
 
 
 def test_verdict_forgery_is_rejected(challenges, runner):

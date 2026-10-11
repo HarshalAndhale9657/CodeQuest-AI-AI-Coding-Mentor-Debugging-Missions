@@ -149,6 +149,9 @@ _BLOCKED_EVENTS = {
     "os.fork": "starting processes is not allowed",
     "os.forkpty": "starting processes is not allowed",
     "os.kill": "signalling processes is not allowed",
+    "os.killpg": "signalling processes is not allowed",
+    "glob.": "listing files is not allowed",
+    "sqlite3.": "databases are not allowed",
     "ctypes.": "native code is not allowed",
     "os.remove": "changing files is not allowed",
     "os.rename": "changing files is not allowed",
@@ -182,6 +185,19 @@ def install_tripwire():
 
     def hook(event, args):
         if busy[0]:
+            return
+        if event in ("os.listdir", "os.scandir"):
+            # the import system lists stdlib dirs; anything else is snooping
+            path = args[0] if args else None
+            if path is None or isinstance(path, int):
+                return
+            busy[0] = True
+            try:
+                real = os.path.normcase(os.path.realpath(os.fsdecode(path)))
+                if not any((real + os.sep).startswith(r) for r in roots):
+                    raise PermissionError(BLOCK_PREFIX + "listing directories is not allowed")
+            finally:
+                busy[0] = False
             return
         if event == "open":
             path = args[0]

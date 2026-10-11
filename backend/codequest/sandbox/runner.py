@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -87,8 +88,27 @@ def parse_payload(stdout: bytes) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) and isinstance(payload.get("kind"), str) else None
 
 
+def _rss_kb(pid: int) -> int:
+    """Resident memory of a process in KB (0 if unknown)."""
+    try:
+        with open(f"/proc/{pid}/status") as status:
+            for line in status:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1])
+    except OSError:
+        pass
+    if sys.platform == "darwin":
+        try:
+            out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], capture_output=True, timeout=1)
+            return int(out.stdout.strip() or 0)
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            return 0
+    return 0
+
+
 def _execute(cmd: list[str], request: dict[str, Any], deadline_s: float, *, env: dict[str, str] | None,
-             cwd: str | None, kill_extra=None, preexec_fn=None, creationflags: int = 0) -> tuple[RawRun, int | None]:
+             cwd: str | None, kill_extra=None, preexec_fn=None, creationflags: int = 0,
+             memory_kb: int = 0) -> tuple[RawRun, int | None]:
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -123,11 +143,18 @@ def _execute(cmd: list[str], request: dict[str, Any], deadline_s: float, *, env:
     except (BrokenPipeError, OSError):
         pass
 
-    timed_out = False
-    try:
-        proc.wait(timeout=deadline_s)
-    except subprocess.TimeoutExpired:
-        timed_out = True
+    timed_out = over_memory = False
+    deadline = time.monotonic() + deadline_s
+    # RLIMIT_AS is not enforced on macOS, so watch resident memory as a backstop
+    while proc.poll() is None:
+        if time.monotonic() > deadline:
+            timed_out = True
+            break
+        if memory_kb and _rss_kb(proc.pid) > memory_kb:
+            over_memory = True
+            break
+        time.sleep(0.02)
+    if timed_out or over_memory:
         kill()
         try:
             proc.wait(timeout=5)
@@ -140,6 +167,8 @@ def _execute(cmd: list[str], request: dict[str, Any], deadline_s: float, *, env:
     stderr_tail = bytes(err[-2000:]).decode("utf-8", "replace")
     if payload is not None:
         return RawRun("completed", payload, proc.returncode, stderr_tail=stderr_tail), proc.returncode
+    if over_memory:
+        return RawRun("crashed", None, proc.returncode, oom_killed=True, stderr_tail=stderr_tail), proc.returncode
     if overflow.is_set():
         return RawRun("output_limit", None, proc.returncode, stderr_tail=stderr_tail), proc.returncode
     if timed_out:
@@ -174,6 +203,7 @@ class LocalRunner:
                 cwd=workdir,
                 preexec_fn=preexec_fn,
                 creationflags=creationflags,
+                memory_kb=limits.memory_mb * 1024,
             )
         return raw
 
@@ -183,12 +213,18 @@ def _posix_limits(limits: Limits):
         import resource
 
         cpu = int(limits.time_limit_s) + 1
-        resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu + 1))
         memory = limits.memory_mb * 2 * 1024 * 1024  # address space is larger than RSS
-        resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))
-        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
-        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        for name, soft, hard in (
+            ("RLIMIT_CPU", cpu, cpu + 1),
+            ("RLIMIT_AS", memory, memory),
+            ("RLIMIT_FSIZE", 1024 * 1024, 1024 * 1024),
+            ("RLIMIT_NOFILE", 64, 64),
+            ("RLIMIT_CORE", 0, 0),
+        ):
+            try:
+                resource.setrlimit(getattr(resource, name), (soft, hard))
+            except (ValueError, OSError, AttributeError):
+                pass  # macOS rejects RLIMIT_AS; the RSS watchdog in _execute backs it up
         os.setsid()
 
     return apply
