@@ -7,6 +7,7 @@
 **Vortexa Hackathon 2026 · Domain 5: AI-Powered Education & Learning Technology · Problem Statement E-02**
 
 [![Live demo](https://img.shields.io/badge/live%20demo-codequest--ai-F89F1B?logo=vercel&logoColor=white)](https://codequest-ai-blond.vercel.app)
+[![Demo video](https://img.shields.io/badge/demo%20video-watch-EA4335?logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1IhBJMC5TJi_JOxqmZQ6HigkL5Eg9dfe7/view?usp=sharing)
 [![API](https://img.shields.io/badge/API-OpenAPI%20docs-009688?logo=fastapi&logoColor=white)](https://codequest-api-31eg.onrender.com/docs)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js 16](https://img.shields.io/badge/web-Next.js%2016-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
@@ -15,7 +16,7 @@
 [![Sandbox](https://img.shields.io/badge/sandbox-Docker%20%C2%B7%20no%20network-F05032?logo=docker&logoColor=white)](docs/SECURITY.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**[Try it live](https://codequest-ai-blond.vercel.app)** · [Quick start](#quick-start) · [How it meets E-02](#how-codequest-meets-problem-statement-e-02) · [LeetCode Companion](#the-leetcode-companion) · [Architecture](docs/ARCHITECTURE.md) · [Docs](#documentation)
+**[Try it live](https://codequest-ai-blond.vercel.app)** · **[Watch the prototype video](https://drive.google.com/file/d/1IhBJMC5TJi_JOxqmZQ6HigkL5Eg9dfe7/view?usp=sharing)** · [Quick start](#quick-start) · [How it meets E-02](#how-codequest-meets-problem-statement-e-02) · [LeetCode Companion](#the-leetcode-companion) · [Architecture](docs/ARCHITECTURE.md) · [Docs](#documentation)
 
 </div>
 
@@ -39,6 +40,7 @@ The same mentor follows the learner to **LeetCode** through the **CodeQuest Comp
 
 | | Link |
 |---|---|
+| **Prototype video** | **[Watch the walkthrough on Google Drive](https://drive.google.com/file/d/1IhBJMC5TJi_JOxqmZQ6HigkL5Eg9dfe7/view?usp=sharing)** |
 | **Web app** | **https://codequest-ai-blond.vercel.app**: click **Try the demo as Priya**, or **Start my own quest** |
 | **API** | https://codequest-api-31eg.onrender.com/api/health · interactive docs at [`/docs`](https://codequest-api-31eg.onrender.com/docs) |
 | **Companion** | Download **[`extension.zip`](https://github.com/HarshalAndhale9657/CodeQuest-AI-AI-Coding-Mentor-Debugging-Missions/raw/main/extension.zip)**, load it unpacked in Chrome and pair it with a code ([three steps](#install-the-companion)). It talks to the hosted API by default |
