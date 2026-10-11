@@ -1,40 +1,181 @@
-# Vortexa Hackathon: Team Workspace
+<div align="center">
 
-> **Status:** 🟡 Pre-event prep. Problem statement **E-02 CodeQuest AI** released 2026-10-11. **Master plan (draft, under team review): [CODEQUEST_MASTER_PLAN.md](CODEQUEST_MASTER_PLAN.md).** No app code yet (pending confirmation of the rules on pre-built code).
-> At feature freeze, this README gets replaced by the submission README ([template](docs/templates/SUBMISSION_README_TEMPLATE.md)).
+# ⚔️ CodeQuest AI: AI Coding Mentor & Debugging Missions
 
-## ⚡ When the problem statement drops
-1. Paste it into [docs/pm/01_hackathon_brief.md](docs/pm/01_hackathon_brief.md)
-2. Run [docs/pm/04_ps_release_playbook.md](docs/pm/04_ps_release_playbook.md) with a timer (90 min to a locked idea, scope, and stack)
-3. Score the ideas in [docs/pm/05_idea_scoring.md](docs/pm/05_idea_scoring.md) → log the choice in [docs/pm/08_decision_log.md](docs/pm/08_decision_log.md)
-4. Bootstrap with [docs/research/tech-stack-playbook.md](docs/research/tech-stack-playbook.md) → deploy hello-world by T+2
-5. Follow [docs/pm/03_timeline.md](docs/pm/03_timeline.md) checkpoints → freeze at T+17 → submit at T+22:30
+**The deterministic coding mentor that remembers your mistakes, adapts your challenges, and never gives away the answer.**
 
-## 📁 Map
+Built for **Vortexa Hackathon 2026** · **Domain 5: AI-Powered Education & Learning Technology** · **Problem Statement: E-02**
 
-| Area | File | Use it for |
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
+[![Next.js 15](https://img.shields.io/badge/frontend-Next.js%2015-black.svg)](https://nextjs.org/)
+[![Tests](https://img.shields.io/badge/tests-105%20passed-brightgreen.svg)]()
+[![Sandbox](https://img.shields.io/badge/sandbox-Docker%20isolated-orange.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-green.svg)]()
+
+</div>
+
+---
+
+## 🚨 The Problem
+
+Beginners learn programming by writing code and examining failure, but modern learning tools are fundamentally broken:
+1. **Cryptic Tracebacks:** An exception names a call-stack location, but fails to explain *why* the learner's logic crashed or where to look.
+2. **Hidden Test Secrecy vs. Feedback:** Automated judges report "Wrong Answer" on hidden tests with zero diagnostic clues, while asking commercial LLMs immediately dumps full solutions.
+3. **No Pedagogical Memory:** Existing judges (LeetCode, HackerRank, CodeChef) treat every submission as an isolated event. Nobody detects habituated bugs—like repeated off-by-one errors or unhandled empty inputs—or adapts future challenges to remediate them.
+
+---
+
+## 💡 Our Solution: "Deterministic Mentor, AI Only for Wording"
+
+**CodeQuest AI** is an intelligent Python practice environment where every failure actively teaches:
+- **Per-Test Verdicts:** Each test runs in an isolated sub-process with explicit outcomes (`passed`, `wrong_output`, `runtime_error`, `timeout`).
+- **Hidden Test Privacy:** Hidden test inputs, values, and standard streams are strictly masked; only coarse categories and plain-language diagnostic explanations are delivered.
+- **Progressive Hint Ladder ($H_1 \to H_4$):** Monotonic hints (Where $\to$ What $\to$ Teach $\to$ Shape) bounded by an airtight runtime **Leak Guard** that prevents solutions from leaking.
+- **Mistake Memory & Adaptive Missions:** Real-time AST detectors track cognitive failure patterns. When a learner makes recurring slips (e.g. 3rd off-by-one), the system automatically prescribes a targeted **Debugging Mission** to cure the root misunderstanding.
+- **Zero LLM Dependency:** The entire diagnostic engine, learner model, and hint ladder are **100% deterministic**. The AI layer is strictly used for conversational phrasing behind a leak firewall and can be toggled **OFF** without loss of functionality.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    subgraph Frontend["Frontend (Next.js + Monaco)"]
+        UI[Workspace & Quest Map]
+        ArenaUI[Sandbox Arena]
+        Ext[LeetCode Companion Extension]
+    end
+
+    subgraph Backend["FastAPI Backend (Deterministic Engine)"]
+        API[API Gateway & Sessions]
+        AST[AST Bug Detectors]
+        Explainer[Plain-Language Explainer]
+        Hints[Hint Ladder & LeakGuard]
+        Learner[Learner Model & Mistake Memory]
+        AI[Guarded AI Layer (Optional)]
+    end
+
+    subgraph Sandbox["Sandboxed Execution Engine"]
+        Runner[Docker Runner (--network none)]
+        Fallback[Local Constrained Runner]
+    end
+
+    UI -->|Submissions| API
+    Ext -->|Pairing & In-situ Check| API
+    API --> Runner
+    Runner -.->|Fallback if no Docker| Fallback
+    Runner -->|Outcomes| Explainer
+    API --> AST
+    AST --> Learner
+    Explainer --> UI
+    Learner -->|Adaptive Re-rank| UI
+    Hints -->|Leak Filter| UI
+```
+
+---
+
+## ✨ Key Features & Capabilities
+
+### 1. 20 Tiered Missions (15 Build + 5 Hand-Authored Debug)
+- **Tiers 1–5 Progression:** Ranging from basic iteration (`total`, `count_evens`) up to recursion and stacks (`flatten`, `valid_brackets`, `binary_search`).
+- **Targeted Debugging Missions:** Realistic broken code snippets where learners must diagnose and patch errors within constrained line budgets (e.g., `debug_average`, `debug_largest`, `debug_binary_search`, `debug_dedupe`, `debug_fib`).
+
+### 2. Hardened Multi-Layer Sandbox
+- Docker runner executes code under `--network none`, read-only root filesystem, non-root user, memory caps (256 MB), and per-test execution timeouts.
+- **Sandbox Arena (`/arena`):** Live red-team demonstration executing canned hostile exploits (file system reads `/etc/passwd`, network egress, fork bombs, infinite loops) proving container containment.
+
+### 3. Progressive Hints with Runtime LeakGuard
+- Monotonic four-level hint ladder:
+  - **H1 (Where):** Points to the problematic code block or loop construct.
+  - **H2 (What):** Minimal failing counterexample generated dynamically.
+  - **H3 (Teach):** Underlying pedagogical concept explanation.
+  - **H4 (Shape):** Structural hint without ever revealing code.
+- Enforced cooldowns prevent hint spamming.
+
+### 4. Mistake Memory & Concept Skill Tracking
+- Fuses AST signals, test tags, and output shape analysis.
+- Decays mistakes across distinct challenges.
+- Concept-level Elo tracking across concepts with demonstrable evidence linking.
+
+### 5. Ecosystem Integrations
+- **LeetCode Companion (Chrome Extension MV3):** Brings CodeQuest's deterministic analysis and approach validation directly inside LeetCode.
+- **Unified Portfolio:** `/api/portfolio/{handle}` imports public LeetCode and Codeforces activity and maps them into a unified, evidence-based mastery graph.
+- **Syntax Warm-up:** Static corpus of 32 real Python idioms (`frontend/public/data/typing-snippets.json`) for muscle-memory practice.
+
+---
+
+## 🧰 Tech Stack
+
+| Component | Technology | Rationale |
 |---|---|---|
-| **PM** | [00_pre_event_checklist](docs/pm/00_pre_event_checklist.md) | Accounts, machines, kit bag: do it now |
-| | [01_hackathon_brief](docs/pm/01_hackathon_brief.md) | Event facts, rules, judging, PS text |
-| | [02_team_and_roles](docs/pm/02_team_and_roles.md) | Who owns what, working agreements |
-| | [03_timeline](docs/pm/03_timeline.md) | 24h hour-by-hour plan + 36h/48h/online scaling |
-| | [04_ps_release_playbook](docs/pm/04_ps_release_playbook.md) | First 90 minutes after PS release |
-| | [05_idea_scoring](docs/pm/05_idea_scoring.md) | Weighted matrix + kill criteria |
-| | [06_task_board](docs/pm/06_task_board.md) | Kanban (≤2h tasks) |
-| | [07_risk_register](docs/pm/07_risk_register.md) | Pre-mortem + mitigations |
-| | [08_decision_log](docs/pm/08_decision_log.md) | One line per decision |
-| | [09_submission_checklist](docs/pm/09_submission_checklist.md) | Final packaging |
-| **Plan** | [CODEQUEST_MASTER_PLAN.md](CODEQUEST_MASTER_PLAN.md) | Product + system design, tiers, timeline, demo, risks for PS E-02 |
-| **Research** | [reports/](docs/research/reports/) · [research_notes/](docs/research/research_notes/) | E-02 market teardown, AI-tutor evidence, techniques, sandboxing, extension/portfolio, roadmaps, typing |
-| **Pitch** | [pitch_deck_outline](docs/pitch/pitch_deck_outline.md) | Round-1 idea deck + final pitch deck |
-| | [demo_script](docs/pitch/demo_script.md) | Timed demo script + rehearsal log |
-| **Templates** | [ps_analysis](docs/templates/ps_analysis_template.md) · [idea_assessment](docs/templates/idea_assessment_template.md) · [submission README](docs/templates/SUBMISSION_README_TEMPLATE.md) | |
+| **Backend** | Python 3.12+, FastAPI, Uvicorn, SQLite (WAL) | High performance, native AST manipulation, typing inspection |
+| **Analysis** | Python `ast`, custom NodeVisitors, heuristics | 100% deterministic, zero latency, zero token cost |
+| **Sandbox** | Docker container, Linux namespaces, subprocess limits | Secure isolated execution (`--network none`, non-root) |
+| **Frontend** | Next.js 15 (App Router), TypeScript, Tailwind CSS | Modern reactive workbench with fast SSR and static assets |
+| **Code Editor** | Monaco Editor | VS Code-grade in-browser editor with rich syntax highlighting |
+| **Extension** | Chrome Extensions API (Manifest V3) | In-situ coding assistance on LeetCode |
+| **AI Layer** | Guarded OpenAI / Gemini Flash-Lite / Fallback Templates | Optional wording polish with strict LeakGuard filtering |
 
-## 👥 Team (3)
-| | Role |
-|---|---|
-| A | Tech Lead · Full-stack & Integration · Timekeeper |
-| B | Frontend · UX · Demo & Deck |
-| C | Backend · AI/ML · Data |
+---
 
-Details: [02_team_and_roles](docs/pm/02_team_and_roles.md)
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- Python $\ge$ 3.12
+- Node.js $\ge$ 20
+- Docker (optional, automatic local sandbox fallback included)
+
+### 2. Backend Setup
+```bash
+cd backend
+python -m pip install -e ".[dev]"
+# Or install core requirements:
+python -m pip install fastapi uvicorn pydantic pyyaml httpx pytest
+
+# Start the backend server on port 8000
+python -m uvicorn codequest.api:app --reload --port 8000
+```
+
+### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+# The workspace is live at http://localhost:3000
+```
+
+### 4. Chrome Extension (LeetCode Companion)
+1. Open Google Chrome and go to `chrome://extensions/`.
+2. Enable **Developer mode** (top right toggle).
+3. Click **Load unpacked** and select the [`extension/`](extension/) directory.
+4. Pin the CodeQuest Companion icon and open any LeetCode problem.
+
+---
+
+## 🧪 Verification & Test Suite
+
+Run the full automated test suite (105+ tests covering sandbox isolation, leak guard, mistake detection, and challenge validation):
+
+```bash
+cd backend
+python -m pytest -v
+```
+
+To verify all 20 challenge YAML schemas and reference implementations:
+```bash
+python -m pytest tests/test_content.py -v
+```
+
+---
+
+## 👥 Vortexa Hackathon Team
+
+- **Person A (Tech Lead):** Sandbox security, API gateway, Docker runner, submission pipeline.
+- **Person B (Frontend & UX):** Next.js application, Monaco workspace, results board, Quest Map.
+- **Person C (Content & AI):** Challenge authoring (20 missions), AST bug detectors, hint design, typing corpus, pitch & documentation.
+
+---
+
+## 📄 License
+
+MIT License. Built with ❤️ for the Vortexa Hackathon.
