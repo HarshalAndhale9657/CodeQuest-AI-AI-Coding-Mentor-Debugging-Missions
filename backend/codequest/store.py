@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS ext_tokens (
     user_id TEXT NOT NULL,
     expires REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS kv (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I
@@ -241,6 +245,15 @@ class Store:
                              (token, row["user_id"], time.time() + ttl_s))
         user = self._one("SELECT * FROM users WHERE id = ?", (row["user_id"],))
         return {"token": token, "user": user}
+
+    # ------------------------------------------------------------------ small settings store
+    def get_kv(self, key: str) -> str | None:
+        row = self._one("SELECT value FROM kv WHERE key = ?", (key,))
+        return row["value"] if row else None
+
+    def set_kv(self, key: str, value: str) -> None:
+        self._exec("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                   (key, value))
 
     def user_by_ext_token(self, token: str) -> dict[str, Any] | None:
         return self._one("SELECT u.* FROM ext_tokens e JOIN users u ON u.id = e.user_id "

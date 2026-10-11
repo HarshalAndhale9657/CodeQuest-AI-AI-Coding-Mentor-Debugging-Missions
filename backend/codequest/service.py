@@ -23,6 +23,15 @@ from codequest.sandbox.runner import Runner
 from codequest.store import Store
 
 RATE_PER_MINUTE = 6
+AI_SPENT_KEY = "ai_spent_usd"
+AI_WORDED_LEVEL = 1
+
+
+def _float(value: str | None) -> float:
+    try:
+        return max(0.0, float(value)) if value else 0.0
+    except ValueError:
+        return 0.0
 MAX_CODE_CHARS = 64 * 1024
 
 
@@ -70,7 +79,9 @@ class CodeQuestService:
         self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="judge")
         self._user_locks: dict[str, threading.Lock] = collections.defaultdict(threading.Lock)
         self._submit_limit = RateLimiter(RATE_PER_MINUTE)
-        self.ai = AILayer()  # off unless an API key is configured
+        # off unless an API key is configured; spend survives restarts so the budget is a real cap
+        self.ai = AILayer(spent_usd=_float(store.get_kv(AI_SPENT_KEY)),
+                          on_spend=lambda spent: store.set_kv(AI_SPENT_KEY, repr(spent)))
         self.fetchers = portfolio.FETCHERS  # tests swap in fakes; no network in CI
 
     def shutdown(self) -> None:
@@ -230,11 +241,13 @@ class CodeQuestService:
                     self.store.update_internal(latest["id"], internal)
             previous = [h["text"] for h in ladder.shown]
             hint = safe_hint(level, ch, restored, latest["code"], counterexample, previous)
-            # optional wording pass: same leak guard over everything shown so far, template on any doubt
-            worded = self.ai.rephrase(hint.text, ch.description,
-                                      lambda t: leak_check([*previous, t], ch, latest["code"])[0])
-            if worded:
-                hint.text, hint.source = worded, "ai"
+            # Optional wording pass, H1 only (plan §16): H2-H4 carry generated values or the learner's own
+            # code, which a model must never paraphrase. Same leak guard over everything shown so far.
+            if level == AI_WORDED_LEVEL and self._state(self.store.user_by_token(user["token"]) or user).ai_enabled:
+                worded = self.ai.rephrase(hint.text, ch.description,
+                                          lambda t: leak_check([*previous, t], ch, latest["code"])[0])
+                if worded:
+                    hint.text, hint.source = worded, "ai"
             ladder.unlocked = level
             ladder.unlocked_at = time.time()
             ladder.code_hash_at_unlock = code_hash(latest["code"])
@@ -269,6 +282,22 @@ class CodeQuestService:
             "solved": state.solved,
             "next_up": next_up(state, self.challenges),
         }
+
+    # ------------------------------------------------------------------ AI preference
+    def ai_status(self, user: dict[str, Any] | None) -> dict[str, Any]:
+        status = self.ai.status()
+        if user is not None:
+            fresh = self.store.user_by_token(user["token"]) or user
+            status["enabled"] = status["enabled"] and self._state(fresh).ai_enabled
+        return status
+
+    def set_ai_preference(self, user: dict[str, Any], enabled: bool) -> dict[str, Any]:
+        with self._user_locks[user["id"]]:
+            fresh = self.store.user_by_token(user["token"]) or user
+            state = self._state(fresh)
+            state.ai_enabled = bool(enabled)
+            self.store.save_state(user["id"], state.to_dict())
+        return self.ai_status(user)
 
     def ext_summary(self, user: dict[str, Any]) -> dict[str, Any]:
         """Compact profile for the extension panel (reads fresh state: the extension user row is a join)."""

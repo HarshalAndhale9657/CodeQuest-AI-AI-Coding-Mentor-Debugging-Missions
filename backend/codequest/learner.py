@@ -57,6 +57,7 @@ class LearnerState:
     beaten: list[str] = field(default_factory=list)
     solved: list[str] = field(default_factory=list)
     attempts: int = 0
+    ai_enabled: bool = True   # learner's own preference for AI-worded hints
 
     def to_dict(self) -> dict[str, Any]:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}

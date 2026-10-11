@@ -170,13 +170,18 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     def post_typing(body: TypingIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.typing_result(user, body.model_dump())
 
+    def optional_user(authorization: str | None = Header(default=None),
+                      s: CodeQuestService = Depends(svc)) -> dict[str, Any] | None:
+        token = authorization.removeprefix("Bearer ").strip() if authorization else None
+        return s.store.user_by_token(token) if token else None
+
     @app.get("/api/settings/ai")
-    def get_ai(s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
-        return s.ai.status()
+    def get_ai(user=Depends(optional_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.ai_status(user)  # public; with a session, `enabled` reflects that learner's preference
 
     @app.post("/api/settings/ai")
     def set_ai(body: AISettingsIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
-        return s.ai.set_enabled(body.enabled)
+        return s.set_ai_preference(user, body.enabled)  # per learner: never switches AI off for everyone
 
     def ext_user(authorization: str | None = Header(default=None),
                  s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
