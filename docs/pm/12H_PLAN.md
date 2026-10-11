@@ -25,10 +25,10 @@
 | Docker runner in the demo (the Arena currently says "not sandboxed") | ❌ **A, P0** |
 | Skill map + Mistake Memory page (`/api/me` exists, no UI) | ❌ **B, P0** |
 | Results column layout (cramped right column) | ❌ B, P1 |
-| 7 → 15 missions + 3 more debug missions | ❌ **C, P0** |
+| 7 → 15 missions + 3 more debug missions (20 missions total) | ✅ **Built and verified (C)** |
 | Guarded AI rewording with an on/off switch (S4) | ❌ A, P1 |
 | Unified portfolio + Codeforces/LeetCode import (P1+P3) | ❌ A (API) + B (page), P1 |
-| Code typing trainer, "Syntax Warm-up" (P6) | ❌ B (page) + C (snippets), P2 |
+| Code typing trainer, "Syntax Warm-up" (P6) | ⏳ B (page), ✅ C (32 snippets ready), P2 |
 | Deploy + demo seed + backup video | ❌ A + C, P0 |
 | Cut: LeetCode extension (P4), placement check (P5), roadmap (P2), Pyodide (S5), exam mode (S6) | 🗑 Pitch slide only |
 
