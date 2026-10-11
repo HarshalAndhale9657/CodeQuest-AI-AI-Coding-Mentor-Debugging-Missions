@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CodeQuest Companion for LeetCode",
   "short_name": "CodeQuest",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Your CodeQuest mentor on LeetCode: approach checks, concept hints and mistake detection. Never the answer.",
   "minimum_chrome_version": "116",
   "icons": {
