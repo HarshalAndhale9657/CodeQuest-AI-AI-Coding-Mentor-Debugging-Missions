@@ -110,12 +110,12 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_1fr] lg:py-24">
-        <section className="space-y-7">
+      <main className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-12 lg:grid-cols-[1.15fr_1fr] lg:py-16">
+        <section className="space-y-6">
           <p className="inline-flex items-center gap-2 rounded-full bg-brand-bg-2 px-3 py-1 text-xs font-medium text-brand">
             <Sparkles size={14} aria-hidden /> AI coding mentor &amp; debugging missions
           </p>
-          <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-text-1 sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-text-1 sm:text-5xl xl:text-[56px]">
             The mentor that never gives you the answer <span className="text-brand">and never forgets your mistakes.</span>
           </h1>
           <p className="max-w-xl text-lg leading-relaxed text-text-2">

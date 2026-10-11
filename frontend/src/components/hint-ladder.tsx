@@ -1,6 +1,6 @@
 "use client";
 
-import { Crosshair, Lightbulb, Lock } from "lucide-react";
+import { Crosshair, Lightbulb, Lock, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { HintEntry, HintGate } from "@/lib/types";
@@ -55,6 +55,14 @@ export function HintLadder({ ladder, maxLevel, next, nextFetchedAt, canAsk, busy
             <div className="min-w-0 flex-1 rounded-lc bg-fill-2 p-3">
               <div className="flex items-center gap-2">
                 <p className="text-xs font-medium text-medium">{h.title}</p>
+                {h.source === "ai" && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-1.5 py-px text-[10px] font-medium text-brand"
+                    title="Worded by AI from CodeQuest's deterministic hint, then leak-checked against the solution"
+                  >
+                    <Sparkles size={10} aria-hidden /> AI-worded
+                  </span>
+                )}
                 {h.region && (
                   <button
                     type="button"

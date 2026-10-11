@@ -174,8 +174,8 @@ function ConceptsCard({ concepts }: { concepts: SkillBand[] }) {
             <li key={c.concept}>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-1">{conceptLabel(c.concept)}</span>
-                <span className={cx("text-xs capitalize", BAND_TEXT[c.band])}>
-                  {c.band}
+                <span className={cx("text-xs", BAND_TEXT[c.band])}>
+                  <span className="capitalize">{c.band}</span>
                   {c.verified > 0 && <span className="text-text-3"> · {c.verified} verified</span>}
                 </span>
               </div>
@@ -194,6 +194,13 @@ function ConceptsCard({ concepts }: { concepts: SkillBand[] }) {
 const PLATFORM: Record<ImportPlatform, { name: string; tone: string }> = {
   leetcode: { name: "LeetCode", tone: "text-brand" },
   codeforces: { name: "Codeforces", tone: "text-blue" },
+};
+
+const STATUS_LABEL: Record<ImportRow["status"], string> = {
+  ok: "Synced",
+  stale: "Stale",
+  error: "Error",
+  queued: "Syncing",
 };
 
 const STATUS_TONE: Record<ImportRow["status"], string> = {
@@ -236,7 +243,7 @@ function ImportCard({ platform, row, own, handle }: { platform: ImportPlatform; 
     <Card className="flex flex-col p-5">
       <div className="flex items-center gap-2">
         <h2 className={cx("text-[15px] font-semibold", meta.tone)}>{meta.name}</h2>
-        {row && <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", STATUS_TONE[row.status])}>{row.status}</span>}
+        {row && <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS_TONE[row.status])}>{STATUS_LABEL[row.status]}</span>}
         {row && <span className="ml-auto truncate text-xs text-text-3">@{row.handle}</span>}
       </div>
 
@@ -283,6 +290,18 @@ function ImportCard({ platform, row, own, handle }: { platform: ImportPlatform; 
                   {tag} <span className="text-text-3">{count}</span>
                 </Tag>
               ))}
+            </div>
+          )}
+          {row.concepts && row.concepts.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-text-3">Maps to CodeQuest concepts (unverified until solved here)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {row.concepts.map((c) => (
+                  <Tag key={c} className="border border-dashed border-line-strong bg-transparent text-text-2">
+                    {conceptLabel(c)}
+                  </Tag>
+                ))}
+              </div>
             </div>
           )}
           {row.error && <p className="text-xs text-red">{row.status === "stale" ? `Showing the last good snapshot. ${row.error}` : row.error}</p>}

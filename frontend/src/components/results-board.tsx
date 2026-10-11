@@ -58,19 +58,21 @@ function VisibleCase({ test }: { test: VisibleTestResult }) {
 }
 
 function HiddenGrid({ tests }: { tests: HiddenTestResult[] }) {
-  const failing = tests.filter((t) => t.status !== "passed");
+  // `index` counts visible tests too; learners should see "Hidden 2", not "Hidden 6".
+  const numbered = tests.map((t, i) => ({ ...t, n: i + 1 }));
+  const failing = numbered.filter((t) => t.status !== "passed");
   return (
     <section aria-label="Hidden tests" className="space-y-2">
       <p className="flex items-center gap-1.5 text-xs font-medium text-text-3">
         <Lock size={12} aria-hidden /> Hidden tests · {tests.length - failing.length}/{tests.length} passed
       </p>
       <ul className="flex flex-wrap gap-1.5">
-        {tests.map((t) => (
+        {numbered.map((t) => (
           <li key={t.test_id}>
             <span
               className={cx("block size-3.5 rounded-[3px]", VERDICT_BG[t.status])}
-              title={`Hidden test ${t.index}: ${VERDICT_LABEL[t.status]}`}
-              aria-label={`Hidden test ${t.index}: ${VERDICT_LABEL[t.status]}`}
+              title={`Hidden test ${t.n}: ${VERDICT_LABEL[t.status]}`}
+              aria-label={`Hidden test ${t.n}: ${VERDICT_LABEL[t.status]}`}
               role="img"
             />
           </li>
@@ -81,7 +83,7 @@ function HiddenGrid({ tests }: { tests: HiddenTestResult[] }) {
           {failing.map((t) => (
             <li key={t.test_id} className="rounded-lc-sm bg-fill-2 px-3 py-2 text-sm">
               <span className={cx("text-xs font-medium", VERDICT_TEXT[t.status])}>
-                Hidden {t.index} · {t.category}
+                Hidden {t.n} · {t.category}
               </span>
               {t.explanation && <p className="mt-0.5 leading-relaxed text-text-2">{t.explanation}</p>}
             </li>
@@ -94,7 +96,7 @@ function HiddenGrid({ tests }: { tests: HiddenTestResult[] }) {
 }
 
 /** LeetCode-style Test Result: verdict headline, case tabs for visible tests, a dot grid for hidden ones. */
-export function ResultsBoard({ result }: { result: JudgeResult }) {
+export function ResultsBoard({ result, children }: { result: JudgeResult; children?: React.ReactNode }) {
   const visible = result.tests.filter((t): t is VisibleTestResult => t.visibility === "visible");
   const hidden = result.tests.filter((t): t is HiddenTestResult => t.visibility === "hidden");
   const firstFail = result.tests.find((t) => t.status !== "passed");
@@ -116,6 +118,9 @@ export function ResultsBoard({ result }: { result: JudgeResult }) {
         </div>
         <p className="text-sm text-text-2">{result.summary}</p>
       </motion.div>
+
+      {/* e.g. the Mistake Memory adaptation: right under the verdict, above the per-test detail */}
+      {children}
 
       {result.syntax_error && (
         <p role="alert" className="rounded-lc bg-red/10 px-3 py-2 text-sm text-text-1">

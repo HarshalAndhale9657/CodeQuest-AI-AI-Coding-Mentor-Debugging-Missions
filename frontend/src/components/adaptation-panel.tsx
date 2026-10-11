@@ -7,6 +7,8 @@ import { mistakeLabel } from "@/lib/format";
 import type { Adaptation } from "@/lib/types";
 
 export function AdaptationPanel({ adaptation }: { adaptation: Adaptation }) {
+  // next_up usually leads with the forged debug mission; show the next distinct one instead of repeating it
+  const next = adaptation.next_up.find((n) => n.challenge_id !== adaptation.debug_mission?.id);
   return (
     <motion.section
       initial={{ opacity: 0, y: -8 }}
@@ -36,16 +38,16 @@ export function AdaptationPanel({ adaptation }: { adaptation: Adaptation }) {
             </span>
           </Link>
         )}
-        {adaptation.next_up[0] && (
+        {next && (
           <Link
-            href={`/m/${adaptation.next_up[0].challenge_id}`}
+            href={`/m/${next.challenge_id}`}
             className="flex items-start gap-2 rounded-lc-sm bg-black/25 p-3 text-sm text-text-1 transition-colors hover:bg-black/35"
           >
             <ListChecks size={16} className="mt-0.5 text-green" aria-hidden />
             <span>
-              <span className="block text-xs text-text-2">Your next mission</span>
-              {adaptation.next_up[0].title}
-              <span className="block text-xs text-text-2">{adaptation.next_up[0].reason}</span>
+              <span className="block text-xs text-text-2">Then try</span>
+              {next.title}
+              <span className="block text-xs text-text-2">{next.reason}</span>
             </span>
           </Link>
         )}

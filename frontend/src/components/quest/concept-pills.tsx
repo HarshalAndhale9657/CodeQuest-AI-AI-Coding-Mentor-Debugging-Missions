@@ -1,6 +1,7 @@
 "use client";
 
-import { Binary, Braces, GitBranch, Hash, LayoutGrid, ListTree, Repeat, Sigma, type LucideIcon } from "lucide-react";
+import { Binary, Braces, ChevronsRight, GitBranch, Hash, LayoutGrid, ListTree, Repeat, Sigma, type LucideIcon } from "lucide-react";
+import { useRef } from "react";
 import { conceptLabel } from "@/lib/format";
 import { cx } from "../ui/cx";
 
@@ -25,9 +26,15 @@ export function ConceptPills({ concepts, value, onChange }: Props) {
       "inline-flex h-9 shrink-0 items-center gap-2 rounded-full px-4 text-sm transition-colors",
       active ? "bg-text-1 font-medium text-bg" : "bg-fill-2 text-text-1 hover:bg-fill-3",
     );
+  const row = useRef<HTMLDivElement>(null);
   return (
     <div className="relative">
-      <div className="flex gap-3 overflow-x-auto pb-1" role="group" aria-label="Filter by concept">
+      <div
+        ref={row}
+        className="flex gap-3 overflow-x-auto pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="group"
+        aria-label="Filter by concept"
+      >
         <button type="button" aria-pressed={value === null} onClick={() => onChange(null)} className={pill(value === null)}>
           <LayoutGrid size={16} aria-hidden /> All Concepts
         </button>
@@ -40,6 +47,17 @@ export function ConceptPills({ concepts, value, onChange }: Props) {
             </button>
           );
         })}
+      </div>
+      {/* LeetCode's "»" at the end of the topic row: a fade plus a scroll button */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex w-16 items-center justify-end bg-linear-to-l from-bg via-bg/90 to-transparent">
+        <button
+          type="button"
+          onClick={() => row.current?.scrollBy({ left: 320, behavior: "smooth" })}
+          className="pointer-events-auto grid size-8 place-items-center rounded-full text-text-2 hover:bg-fill-2 hover:text-text-1"
+          aria-label="Show more concepts"
+        >
+          <ChevronsRight size={18} aria-hidden />
+        </button>
       </div>
     </div>
   );

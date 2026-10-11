@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { Group, Panel as ResizablePanel, Separator, useDefaultLayout, useGroupRef } from "react-resizable-panels";
 import { AdaptationPanel } from "@/components/adaptation-panel";
 import { WorkspaceFrame, WorkspaceGate } from "@/components/app-shell";
 import { CodeEditor } from "@/components/code-editor";
@@ -167,6 +167,8 @@ function Workspace({
       const status = query.state.data?.status;
       return status === "done" || status === "error" ? false : 400;
     },
+    // Keep polling while the learner looks at another tab (e.g. LeetCode); otherwise the verdict waits for focus.
+    refetchIntervalInBackground: true,
   });
 
   const finished = submission.data?.status === "done" || submission.data?.status === "error";
@@ -470,8 +472,9 @@ function Workspace({
             </Link>
           </div>
         )}
-        {adaptation && <AdaptationPanel adaptation={adaptation} />}
-        <ResultsBoard key={submissionId} result={result} />
+        <ResultsBoard key={submissionId} result={result}>
+          {adaptation && <AdaptationPanel adaptation={adaptation} />}
+        </ResultsBoard>
       </div>
     );
   })();
@@ -503,7 +506,7 @@ function Workspace({
 
   return (
     <WorkspaceFrame left={breadcrumb} center={actions}>
-      {wide ? <ResizableWorkspace left={left} editor={editor} bottom={bottom} /> : (
+      {wide ? <ResizableWorkspace left={left} editor={editor} bottom={bottom} resultKey={result ? submissionId : null} /> : (
         <div className="flex flex-col gap-2">
           <div className="max-h-[70vh]">{left}</div>
           {editor}
@@ -514,9 +517,26 @@ function Workspace({
   );
 }
 
-function ResizableWorkspace({ left, editor, bottom }: { left: ReactNode; editor: ReactNode; bottom: ReactNode }) {
+function ResizableWorkspace({
+  left,
+  editor,
+  bottom,
+  resultKey,
+}: {
+  left: ReactNode;
+  editor: ReactNode;
+  bottom: ReactNode;
+  /** Changes when a new verdict arrives; the Test Result pane then grows so the verdict is readable. */
+  resultKey: string | null;
+}) {
   const horizontal = useDefaultLayout({ id: "cq-mission-h" });
   const vertical = useDefaultLayout({ id: "cq-mission-v" });
+  const verticalRef = useGroupRef();
+  useEffect(() => {
+    const group = verticalRef.current;
+    if (!resultKey || !group) return;
+    if ((group.getLayout().tests ?? 0) < 55) group.setLayout({ code: 40, tests: 60 });
+  }, [resultKey, verticalRef]);
   return (
     <Group orientation="horizontal" className="min-h-0 flex-1" defaultLayout={horizontal.defaultLayout} onLayoutChanged={horizontal.onLayoutChanged}>
       <ResizablePanel id="problem" defaultSize="42" minSize="22">
@@ -524,7 +544,13 @@ function ResizableWorkspace({ left, editor, bottom }: { left: ReactNode; editor:
       </ResizablePanel>
       <Separator className="cq-handle" />
       <ResizablePanel id="work" minSize="30">
-        <Group orientation="vertical" className="h-full" defaultLayout={vertical.defaultLayout} onLayoutChanged={vertical.onLayoutChanged}>
+        <Group
+          orientation="vertical"
+          className="h-full"
+          groupRef={verticalRef}
+          defaultLayout={vertical.defaultLayout}
+          onLayoutChanged={vertical.onLayoutChanged}
+        >
           <ResizablePanel id="code" defaultSize="60" minSize="20">
             {editor}
           </ResizablePanel>
