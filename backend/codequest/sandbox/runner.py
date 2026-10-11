@@ -26,7 +26,10 @@ from typing import Any, Protocol
 
 HARNESS_PATH = Path(__file__).with_name("harness.py")
 MARKER = b"\x1eCQRESULT\x1e"
-STARTUP_ALLOWANCE_S = 1.5   # interpreter / container start-up is not charged to the learner
+# Container start-up is not charged to the learner. This is only the host-side backstop: the harness's
+# in-container watchdog still enforces time_limit on learner code. Docker Desktop (Windows/macOS) can take
+# several seconds to start containers when a submission runs 4 tests in parallel, so keep this generous.
+STARTUP_ALLOWANCE_S = float(os.environ.get("CQ_DOCKER_STARTUP_S", "6.0"))
 LOCAL_STARTUP_ALLOWANCE_S = 1.0
 MAX_RESULT_BYTES = 1024 * 1024
 MAX_STDERR_BYTES = 8 * 1024
