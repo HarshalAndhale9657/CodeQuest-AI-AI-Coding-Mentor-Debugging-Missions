@@ -12,11 +12,12 @@ from typing import Any
 from codequest.analysis.detectors import Finding
 from codequest.analysis.probe import Counterexample, find_counterexample
 from codequest.content import Challenge, public_challenge
-from codequest.hints import LadderState, code_hash, gate, max_level, safe_hint
+from codequest.hints import LadderState, code_hash, gate, leak_check, max_level, safe_hint
 from codequest.judge import JudgeResult, MistakeEvent, SubmissionTooLarge, TestOutcome, judge
 from codequest.learner import (LEVEL_PRIOR, LearnerState, attempt_score, concept_bands, finish_attempt, next_up,
                                record_mistakes, start_attempt)
 from codequest import portfolio
+from codequest.ai import AILayer
 from codequest.sandbox.runner import Runner
 from codequest.store import Store
 
@@ -68,6 +69,7 @@ class CodeQuestService:
         self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="judge")
         self._user_locks: dict[str, threading.Lock] = collections.defaultdict(threading.Lock)
         self._submit_limit = RateLimiter(RATE_PER_MINUTE)
+        self.ai = AILayer()  # off unless an API key is configured
         self.fetchers = portfolio.FETCHERS  # tests swap in fakes; no network in CI
 
     def shutdown(self) -> None:
@@ -227,6 +229,11 @@ class CodeQuestService:
                     self.store.update_internal(latest["id"], internal)
             previous = [h["text"] for h in ladder.shown]
             hint = safe_hint(level, ch, restored, latest["code"], counterexample, previous)
+            # optional wording pass: same leak guard over everything shown so far, template on any doubt
+            worded = self.ai.rephrase(hint.text, ch.description,
+                                      lambda t: leak_check([*previous, t], ch, latest["code"])[0])
+            if worded:
+                hint.text, hint.source = worded, "ai"
             ladder.unlocked = level
             ladder.unlocked_at = time.time()
             ladder.code_hash_at_unlock = code_hash(latest["code"])

@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from codequest import arena
+from codequest.ai import load_dotenv
 from codequest.content import load_all
 from codequest.sandbox.runner import Runner, make_runner
 from codequest.service import CodeQuestService, ServiceError
@@ -49,8 +50,16 @@ class TypingIn(BaseModel):
     errors: dict[str, int] = Field(default_factory=dict, max_length=200)
 
 
+class AISettingsIn(BaseModel):
+    enabled: bool
+
+
 class ArenaIn(BaseModel):
     index: int = Field(ge=0, lt=len(arena.ATTACKS))
+
+
+# repo-root .env (gitignored); real environment variables take precedence
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 
 def create_app(service: CodeQuestService | None = None) -> FastAPI:
@@ -130,6 +139,14 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     @app.post("/api/typing/results")
     def post_typing(body: TypingIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.typing_result(user, body.model_dump())
+
+    @app.get("/api/settings/ai")
+    def get_ai(s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.ai.status()
+
+    @app.post("/api/settings/ai")
+    def set_ai(body: AISettingsIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.ai.set_enabled(body.enabled)
 
     @app.get("/api/arena/attacks")
     def attacks() -> list[dict[str, Any]]:

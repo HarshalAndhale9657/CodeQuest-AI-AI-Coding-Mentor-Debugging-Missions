@@ -48,7 +48,7 @@
 
 ## New API contracts (A implements, B consumes; frozen at 14:00)
 
-✅ **Live now:** portfolio, imports, typing results. ⏳ Pending: settings/ai.
+✅ **Live now:** portfolio, imports, typing results. settings/ai too. Hints now carry `source: "template" | "fallback" | "ai"`; show a small "AI-worded" tag when it is "ai".
 
 ```
 GET  /api/me                      (exists) {user, skills[], mistakes{...}, ...}
@@ -66,8 +66,8 @@ GET  /api/portfolio/{handle}      PUBLIC (no auth). handle = user.handle from /a
                                      typing: {best_cpm, accuracy, runs} | null}
                                   404 if the handle is unknown
 POST /api/imports                 {platform:"codeforces"|"leetcode", handle} → 202 {status:"queued"|"cached"}   (auth; poll the portfolio ~1-3 s)
-GET  /api/settings/ai             → {enabled:boolean, provider:string|null, budget_left_usd:number}
-POST /api/settings/ai             {enabled:boolean} → same shape
+GET  /api/settings/ai             → {enabled, available, provider|null, budget_left_usd, rephrased, leaks_blocked}  (public)
+POST /api/settings/ai             {enabled:boolean} → same shape  (auth; enabled stays false when no key is configured)
 POST /api/typing/results          {snippet_id, concept, cpm, accuracy (0-1), duration_ms, errors:{[char]:count}} → {best_cpm, accuracy, runs}
 ```
 The snippet corpus is static: `frontend/public/data/typing-snippets.json` (C writes it):
