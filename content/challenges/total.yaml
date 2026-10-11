@@ -1,0 +1,37 @@
+id: total
+type: build
+tier: 1
+title: "Add Them Up"
+concepts: {primary: loops, secondary: [lists]}
+traps: [empty_input, off_by_one]
+function: total
+description: |
+  Return the sum of all numbers in the list. The sum of an empty list is 0.
+edge_cases:
+  - an empty list
+  - negative numbers
+  - the first and the last element
+starter_code: |
+  def total(nums):
+      pass
+small_inputs:
+  nums: {kind: list_int, values: [-2, 0, 1, 3], max_len: 3}
+tests:
+  - {id: v1, visibility: visible, args: [[1, 2, 3]], expected: 6, tags: [typical]}
+  - {id: v2, visibility: visible, args: [[5]], expected: 5, tags: [single]}
+  - {id: v3, visibility: visible, args: [[]], expected: 0, tags: [empty]}
+  - {id: h1, visibility: hidden, args: [[-2, -3]], expected: -5, tags: [negative]}
+  - {id: h2, visibility: hidden, args: [[10, -10, 7]], expected: 7, tags: [boundary]}
+  - {id: h3, visibility: hidden, args: [[4, 4]], expected: 8, tags: [duplicates]}
+  - {id: h4, visibility: hidden, args: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]], expected: 210, tags: [large]}
+  - {id: h5, visibility: hidden, args: [[0, 0, 0]], expected: 0, tags: [zero]}
+references:
+  - |
+    def total(nums):
+        return sum(nums)
+  - |
+    def total(nums):
+        result = 0
+        for n in nums:
+            result += n
+        return result

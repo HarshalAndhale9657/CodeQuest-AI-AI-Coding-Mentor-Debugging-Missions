@@ -1,0 +1,44 @@
+id: largest
+type: build
+tier: 1
+title: "Find the Largest"
+concepts: {primary: conditionals, secondary: [loops, lists]}
+traps: [bad_initial_value, empty_input]
+function: largest
+description: |
+  Return the largest number in the list without using max(). For an empty list, return None.
+edge_cases:
+  - an empty list
+  - a list where every number is negative
+  - the largest number in the first or last position
+starter_code: |
+  def largest(nums):
+      pass
+small_inputs:
+  nums: {kind: list_int, values: [-3, -1, 0, 2], max_len: 3}
+tests:
+  - {id: v1, visibility: visible, args: [[3, 9, 2]], expected: 9, tags: [typical]}
+  - {id: v2, visibility: visible, args: [[7]], expected: 7, tags: [single]}
+  - {id: v3, visibility: visible, args: [[]], expected: null, tags: [empty]}
+  - {id: h1, visibility: hidden, args: [[-5, -2, -9]], expected: -2, tags: [negative]}
+  - {id: h2, visibility: hidden, args: [[4, 4, 4]], expected: 4, tags: [duplicates]}
+  - {id: h3, visibility: hidden, args: [[10, 3, 1]], expected: 10, tags: [boundary]}
+  - {id: h4, visibility: hidden, args: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 100]], expected: 100, tags: [large, boundary]}
+  - {id: h5, visibility: hidden, args: [[-1, -7]], expected: -1, tags: [negative]}
+references:
+  - |
+    def largest(nums):
+        if not nums:
+            return None
+        best = nums[0]
+        for n in nums:
+            if n > best:
+                best = n
+        return best
+  - |
+    def largest(nums):
+        best = None
+        for n in nums:
+            if best is None or n > best:
+                best = n
+        return best

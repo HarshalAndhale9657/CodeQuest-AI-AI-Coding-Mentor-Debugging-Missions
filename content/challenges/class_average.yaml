@@ -1,0 +1,52 @@
+id: class_average
+type: build
+tier: 2
+title: "Class Average"
+concepts: {primary: loops, secondary: [lists, conditionals]}
+traps: [empty_input, off_by_one, infinite_loop]
+function: class_average
+description: |
+  A teacher records one score per student. A score of -1 means the student was absent.
+  Return the average of the real scores (ignore every -1). If there are no real scores,
+  return 0.0.
+edge_cases:
+  - an empty list
+  - every student absent
+  - a single score
+  - an absentee at the start, middle or end
+starter_code: |
+  def class_average(scores):
+      # scores: list of ints, -1 means the student was absent
+      pass
+small_inputs:
+  scores: {kind: list_int, values: [-1, 0, 2, 5], max_len: 3}
+tests:
+  - {id: v1, visibility: visible, args: [[70, 80, 90, 80]], expected: 80.0, tags: [typical]}
+  - {id: v2, visibility: visible, args: [[90, 80, 70]], expected: 80.0, tags: [boundary]}
+  - {id: v3, visibility: visible, args: [[]], expected: 0.0, tags: [empty]}
+  - {id: v4, visibility: visible, args: [[80, -1, 90]], expected: 85.0, tags: [absent]}
+  - {id: h1, visibility: hidden, args: [[100, 50]], expected: 75.0, tags: [boundary]}
+  - {id: h2, visibility: hidden, args: [[-1, -1]], expected: 0.0, tags: [absent]}
+  - {id: h3, visibility: hidden, args: [[55]], expected: 55.0, tags: [single]}
+  - {id: h4, visibility: hidden, args: [[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]], expected: 55.0, tags: [large]}
+  - {id: h5, visibility: hidden, args: [[0, 0, 100]], expected: 33.333333333333336, tags: [zero]}
+  - {id: h6, visibility: hidden, args: [[-1, 70]], expected: 70.0, tags: [absent, boundary]}
+references:
+  - |
+    def class_average(scores):
+        present = [s for s in scores if s != -1]
+        if not present:
+            return 0.0
+        return sum(present) / len(present)
+  - |
+    def class_average(scores):
+        total = 0
+        count = 0
+        for s in scores:
+            if s == -1:
+                continue
+            total += s
+            count += 1
+        if count == 0:
+            return 0.0
+        return total / count

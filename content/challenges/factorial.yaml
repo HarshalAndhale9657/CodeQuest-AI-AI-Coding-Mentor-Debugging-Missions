@@ -1,0 +1,36 @@
+id: factorial
+type: build
+tier: 5
+title: "Factorial, Recursively"
+concepts: {primary: recursion, secondary: [functions]}
+traps: [base_case]
+function: factorial
+description: |
+  Return n factorial (n!) for a whole number n >= 0, using recursion. By definition 0! is 1.
+edge_cases:
+  - n = 0
+  - n = 1
+starter_code: |
+  def factorial(n):
+      pass
+small_inputs:
+  n: {kind: int, values: [0, 1, 2, 3, 4]}
+tests:
+  - {id: v1, visibility: visible, args: [3], expected: 6, tags: [typical]}
+  - {id: v2, visibility: visible, args: [1], expected: 1, tags: [base]}
+  - {id: v3, visibility: visible, args: [5], expected: 120, tags: [typical]}
+  - {id: h1, visibility: hidden, args: [0], expected: 1, tags: [base]}
+  - {id: h2, visibility: hidden, args: [10], expected: 3628800, tags: [large]}
+  - {id: h3, visibility: hidden, args: [2], expected: 2, tags: [boundary]}
+  - {id: h4, visibility: hidden, args: [7], expected: 5040, tags: [typical]}
+references:
+  - |
+    def factorial(n):
+        if n <= 1:
+            return 1
+        return n * factorial(n - 1)
+  - |
+    def factorial(n):
+        if n == 0:
+            return 1
+        return n * factorial(n - 1)
