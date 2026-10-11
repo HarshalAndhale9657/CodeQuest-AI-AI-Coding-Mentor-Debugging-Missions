@@ -61,7 +61,7 @@ def test_priya_demo_flow(client):
     assert hidden and all(set(t) == {"test_id", "index", "visibility", "status", "category", "explanation"} for t in hidden)
 
     events = result["events"]
-    assert "off_by_one" in events["newly_recurring"]
+    assert events["newly_recurring"] == ["off_by_one"]  # the demo story: exactly one pattern spotted, live
     assert events["adaptation"]["debug_mission"]["id"] == "debug_average"
     assert events["adaptation"]["next_up"][0]["reason"].startswith("Targets your recurring mistake")
 
@@ -106,3 +106,12 @@ def test_arena_accepts_index_only(client):
     assert r["contained"] is True and r["verdict"] == "runtime_error"
     assert client.post("/api/arena/run", json={"index": 99}, headers=h).status_code == 422
     assert client.post("/api/arena/run", json={"code": "print(1)"}, headers=h).status_code == 422
+
+
+def test_priya_seed_is_a_consistent_story(client):
+    h = login(client, "priya")
+    me = client.get("/api/me", headers=h).json()
+    assert set(me["solved"]) == {"count_evens", "largest", "reverse_words"}
+    assert me["mistakes"]["recurring"] == []                      # nothing recurring until the live demo
+    assert me["mistakes"]["strength"]["off_by_one"] == pytest.approx(1.0)
+    assert {b["concept"] for b in me["skills"] if b["attempts"]} >= {"loops", "conditionals", "strings"}

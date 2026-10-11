@@ -7,8 +7,8 @@
 Built for **Vortexa Hackathon 2026** · **Domain 5: AI-Powered Education & Learning Technology** · **Problem Statement: E-02**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
-[![Next.js 15](https://img.shields.io/badge/frontend-Next.js%2015-black.svg)](https://nextjs.org/)
-[![Tests](https://img.shields.io/badge/tests-105%20passed-brightgreen.svg)]()
+[![Next.js 16](https://img.shields.io/badge/frontend-Next.js%2016-black.svg)](https://nextjs.org/)
+[![Tests](https://img.shields.io/badge/tests-166%20passed-brightgreen.svg)]()
 [![Sandbox](https://img.shields.io/badge/sandbox-Docker%20isolated-orange.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 
@@ -30,8 +30,8 @@ Beginners learn programming by writing code and examining failure, but modern le
 **CodeQuest AI** is an intelligent Python practice environment where every failure actively teaches:
 - **Per-Test Verdicts:** Each test runs in an isolated sub-process with explicit outcomes (`passed`, `wrong_output`, `runtime_error`, `timeout`).
 - **Hidden Test Privacy:** Hidden test inputs, values, and standard streams are strictly masked; only coarse categories and plain-language diagnostic explanations are delivered.
-- **Progressive Hint Ladder ($H_1 \to H_4$):** Monotonic hints (Where $\to$ What $\to$ Teach $\to$ Shape) bounded by an airtight runtime **Leak Guard** that prevents solutions from leaking.
-- **Mistake Memory & Adaptive Missions:** Real-time AST detectors track cognitive failure patterns. When a learner makes recurring slips (e.g. 3rd off-by-one), the system automatically prescribes a targeted **Debugging Mission** to cure the root misunderstanding.
+- **Progressive Hint Ladder ($H_1 \to H_4$):** Monotonic hints (Where $\to$ What $\to$ Teach $\to$ Shape) where every hint, including any AI wording, passes a **Leak Guard** that checks it against the reference solution before it is shown.
+- **Mistake Memory & Adaptive Missions:** Real-time AST detectors track cognitive failure patterns. When the same mistake appears in a second, different mission (e.g. a repeated off-by-one), the system automatically prescribes a targeted **Debugging Mission** to cure the root misunderstanding.
 - **Zero LLM Dependency:** The entire diagnostic engine, learner model, and hint ladder are **100% deterministic**. The AI layer is strictly used for conversational phrasing behind a leak firewall and can be toggled **OFF** without loss of functionality.
 
 ---
@@ -89,7 +89,7 @@ flowchart TD
   - **H1 (Where):** Points to the problematic code block or loop construct.
   - **H2 (What):** Minimal failing counterexample generated dynamically.
   - **H3 (Teach):** Underlying pedagogical concept explanation.
-  - **H4 (Shape):** Structural hint without ever revealing code.
+  - **H4 (Shape):** The learner's *own* faulty line with one expression blanked out (missions with very short solutions stop at H3).
 - Enforced cooldowns prevent hint spamming.
 
 ### 4. Mistake Memory & Concept Skill Tracking
@@ -111,7 +111,7 @@ flowchart TD
 | **Backend** | Python 3.12+, FastAPI, Uvicorn, SQLite (WAL) | High performance, native AST manipulation, typing inspection |
 | **Analysis** | Python `ast`, custom NodeVisitors, heuristics | 100% deterministic, zero latency, zero token cost |
 | **Sandbox** | Docker container, Linux namespaces, subprocess limits | Secure isolated execution (`--network none`, non-root) |
-| **Frontend** | Next.js 15 (App Router), TypeScript, Tailwind CSS | Modern reactive workbench with fast SSR and static assets |
+| **Frontend** | Next.js 16 (App Router), TypeScript, Tailwind CSS | Modern reactive workbench with fast SSR and static assets |
 | **Code Editor** | Monaco Editor | VS Code-grade in-browser editor with rich syntax highlighting |
 | **Extension** | Chrome Extensions API (Manifest V3) | In-situ coding assistance on LeetCode |
 | **AI Layer** | Guarded OpenAI / Gemini Flash-Lite / Fallback Templates | Optional wording polish with strict LeakGuard filtering |
@@ -154,7 +154,7 @@ npm run dev
 
 ## 🧪 Verification & Test Suite
 
-Run the full automated test suite (105+ tests covering sandbox isolation, leak guard, mistake detection, and challenge validation):
+Run the full automated test suite (166 tests covering sandbox isolation, leak guard, mistake detection, and challenge validation):
 
 ```bash
 cd backend

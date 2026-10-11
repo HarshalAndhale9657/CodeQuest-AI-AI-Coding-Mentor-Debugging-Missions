@@ -62,12 +62,27 @@ class RateLimiter:
             hits.append(now)
 
 
-def _seed_state(persona: str) -> LearnerState:
+# Priya's demo history, oldest first: (mission, mistakes the analyzer recorded, attempt score).
+# Built through the real learner-model functions, so bands, Elo and Mistake Memory are consistent.
+# Exactly one off-by-one is on record and it is the latest attempt: her next off-by-one in a
+# different mission makes it recurring live (m = 0.8 * 1 + 1 = 1.8 >= 1.5, seen in 2 of the last 5).
+PRIYA_HISTORY: tuple[tuple[str, tuple[str, ...], float], ...] = (
+    ("count_evens", (), 1.0),                   # solved first try
+    ("largest", ("bad_initial_value",), 0.9),   # started best at 0, fixed it after hint 1
+    ("reverse_words", (), 1.0),                 # solved first try
+    ("total", ("off_by_one",), 0.55),           # `range(len(nums) - 1)`, gave up after hints
+)
+
+
+def _seed_state(persona: str, challenges: dict[str, Challenge]) -> LearnerState:
     state = LearnerState(prior=LEVEL_PRIOR["basics"])
     if persona == "priya":
-        # One earlier off-by-one, so the next one makes it a recurring mistake (the demo moment).
-        start_attempt(state)
-        record_mistakes(state, ["off_by_one"])
+        for challenge_id, mistakes, score in PRIYA_HISTORY:
+            if challenge_id not in challenges:
+                continue  # content changed; the remaining history still tells a consistent story
+            start_attempt(state)
+            record_mistakes(state, list(mistakes))
+            finish_attempt(state, challenges[challenge_id], score)
     return state
 
 
@@ -93,9 +108,7 @@ class CodeQuestService:
         if persona not in {"priya", "guest"}:
             raise ServiceError(400, "Unknown persona.")
         display = (name or ("Priya" if persona == "priya" else "Guest")).strip()[:40] or "Guest"
-        state = _seed_state(persona)
-        if persona == "priya" and "total" in self.challenges:
-            finish_attempt(state, self.challenges["total"], 0.55)
+        state = _seed_state(persona, self.challenges)
         user = self.store.create_user(display, state.to_dict())
         return {"token": user["token"], "user": {"id": user["id"], "name": display,
                                                  "handle": portfolio.public_handle(user)}}
