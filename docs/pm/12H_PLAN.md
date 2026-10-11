@@ -73,6 +73,18 @@ POST /api/typing/results          {snippet_id, concept, cpm, accuracy (0-1), dur
 The snippet corpus is static: `frontend/public/data/typing-snippets.json` (C writes it):
 `[{id, concept, title, code}]`, with 30–40 snippets of 3–12 lines each, real Python idioms, indented with 4 spaces.
 
+### LeetCode Companion (A, live): the extension is back in scope (user decision)
+The extension lives in `extension/` (load unpacked). B: please add a **"Connect LeetCode Companion"** button that calls the first endpoint and shows the code.
+```
+POST /api/ext/pairing-code        (web auth) → {code: "ABC123", expires_in_s: 600}     single-use, 10 min
+POST /api/ext/pair                {code} → {token, user:{id,name}}                    extension token, 7 days, NOT a web token
+POST /api/ext/analyze             (ext auth) {code, language:"python"} → {syntax_error|null, findings:[{key,line,message}]}
+POST /api/ext/approach            (ext auth) {text, tags:[slug]} → {verdict:"on_track"|"partially"|"off_track"|"unclear", mentioned, brute_force, question}
+POST /api/ext/hint                (ext auth) {tags:[slug], level:1-3} → {level, max_level, text, concept|null}
+POST /api/ext/sync                (ext auth) {slug, tags, verdict:"accepted"|"wrong_answer"|"runtime_error"|"time_limit"|"other", code}
+                                  → {recorded_mistakes, newly_recurring, concepts, slug}   (feeds the same Mistake Memory)
+```
+
 ## Demo (4 minutes)
 1. Priya opens Class Average and submits the empty-list bug. Per-test cards appear; a hidden test fails by **category only**; the plain-language explanation shows the variables at the crash.
 2. Hint 1 → 2 → 3, each more specific. The cooldown blocks spamming. Show that the leak guard blocks a request for the answer.

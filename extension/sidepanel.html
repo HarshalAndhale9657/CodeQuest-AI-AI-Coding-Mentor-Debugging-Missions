@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CodeQuest Companion</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>Code<span>Quest</span> Companion</h1>
+      <button id="settings-toggle" class="icon" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+    </header>
+
+    <section id="settings" class="card" hidden>
+      <label for="api-base">CodeQuest server</label>
+      <input id="api-base" type="url" placeholder="http://localhost:8000" spellcheck="false" />
+      <div class="row">
+        <button id="save-settings" type="button">Save</button>
+        <button id="disconnect" type="button" class="ghost">Disconnect</button>
+      </div>
+      <p id="settings-status" class="muted" role="status"></p>
+    </section>
+
+    <section id="pair-view" class="card" hidden>
+      <h2>Connect your CodeQuest account</h2>
+      <p class="muted">In CodeQuest, choose <strong>Connect LeetCode Companion</strong> and type the 6-character code here.</p>
+      <form id="pair-form" class="row">
+        <input id="pair-code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123" aria-label="Pairing code" required />
+        <button type="submit">Connect</button>
+      </form>
+      <p id="pair-status" class="muted" role="status"></p>
+    </section>
+
+    <section id="main-view" hidden>
+      <div id="problem" class="card">
+        <p class="muted" id="problem-status" role="status">Open a LeetCode problem to begin.</p>
+        <h2 id="problem-title"></h2>
+        <div id="problem-tags" class="tags"></div>
+      </div>
+
+      <div class="card">
+        <h3>1 · Check my approach</h3>
+        <p class="muted">Describe your plan in a sentence or two. You get a question back, never code.</p>
+        <textarea id="approach-text" rows="3" maxlength="2000" placeholder="e.g. I'll use a hash map to remember what I've seen"></textarea>
+        <button id="approach-btn" type="button" data-needs-problem>Check approach</button>
+        <div id="approach-out" class="out" aria-live="polite"></div>
+      </div>
+
+      <div class="card">
+        <h3>2 · Hint</h3>
+        <p class="muted">Concept hints that get more specific each time. Never the solution.</p>
+        <button id="hint-btn" type="button" data-needs-problem>Show hint 1</button>
+        <ol id="hint-out" class="out hints" aria-live="polite"></ol>
+      </div>
+
+      <div class="card">
+        <h3>3 · Analyze my code</h3>
+        <p class="muted">Reads your Python from the editor and checks it for common mistakes.</p>
+        <button id="analyze-btn" type="button" data-needs-problem>Analyze my code</button>
+        <div id="analyze-out" class="out" aria-live="polite"></div>
+      </div>
+
+      <div class="card">
+        <h3>4 · Log this attempt</h3>
+        <p class="muted">After you submit on LeetCode, log the result so CodeQuest can track your recurring mistakes.</p>
+        <div class="row">
+          <select id="verdict" aria-label="LeetCode result">
+            <option value="wrong_answer">Wrong Answer</option>
+            <option value="runtime_error">Runtime Error</option>
+            <option value="time_limit">Time Limit Exceeded</option>
+            <option value="accepted">Accepted</option>
+          </select>
+          <button id="sync-btn" type="button" data-needs-problem>Log attempt</button>
+        </div>
+        <div id="sync-out" class="out" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <footer class="muted small">Your code leaves the browser only when you press a button. Disabled during contests.</footer>
+    <script src="sidepanel.js" type="module"></script>
+  </body>
+</html>

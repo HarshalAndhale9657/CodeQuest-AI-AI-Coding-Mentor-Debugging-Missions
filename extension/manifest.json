@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "CodeQuest Companion for LeetCode",
+  "short_name": "CodeQuest",
+  "version": "0.1.0",
+  "description": "Your CodeQuest mentor on LeetCode: approach checks, concept hints and mistake detection. Never the answer.",
+  "minimum_chrome_version": "116",
+  "action": { "default_title": "Open CodeQuest Companion" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["sidePanel", "storage", "scripting"],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "optional_host_permissions": ["https://*/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  }
+}
