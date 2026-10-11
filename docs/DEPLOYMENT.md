@@ -30,6 +30,7 @@ Copy `.env.example` to `.env` at the repository root. Real environment variables
 | `OPENAI_API_KEY` | empty | Enables AI wording of hint 1 (`gpt-4.1-nano`) and the Companion tutor (`gpt-4.1-mini`) |
 | `GEMINI_API_KEY` | empty | Second provider for hint wording (`gemini-2.0-flash-lite`) |
 | `CQ_CHAT_MODEL` | `gpt-4.1-mini` | Model for the Companion tutor |
+| `CQ_ROADMAP_MODEL` | `gpt-4.1-mini` | Model for roadmap coach notes (Structured Outputs; about $0.001 per plan, cached) |
 | `CQ_AI_BUDGET_USD` | `2.0` | Hard spend cap shared by all AI features, persisted in the database |
 
 With no AI keys every feature still works on deterministic templates.

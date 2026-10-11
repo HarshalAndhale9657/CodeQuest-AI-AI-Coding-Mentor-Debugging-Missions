@@ -107,7 +107,22 @@ Unlocks the next level. Requires a judged, failing submission; later levels need
 `source` is `template`, `fallback` (leak guard replaced the text) or `ai` (hint 1 reworded by the AI layer).
 
 ### `GET /api/me` · web auth
-`{user, skills: [{concept, band, attempts, verified, p_median}], mistakes: {recurring, beaten, strength, history}, solved, next_up}`.
+`{user, skills: [{concept, band, attempts, verified, p_median}], mistakes: {recurring, beaten, strength, history}, solved, next_up, profile, onboarded}`.
+---
+
+## Profile, roadmap and your data
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/me/profile` | web | `{name, handle, profile \| null, onboarded, options: {goals, levels, topics}}` |
+| `PUT` | `/api/me/profile` | web | `{name?, goal, deadline_weeks (2–26) \| null, hours_per_week (1–40), level, premium_ok, comfortable: [topic]}`. The level sets the skill prior for concepts with no evidence yet |
+| `GET` | `/api/me/roadmap` | web | The current plan with live progress. `409 {code: "profile_required"}` before onboarding. Built deterministically on first view (no AI spend) |
+| `POST` | `/api/me/roadmap` | web · 4/min | `{use_ai: bool}`: re-plan now; AI coach notes only if the learner's AI switch is on and budget allows |
+| `POST` | `/api/me/roadmap/items` | web | `{item_id: "lc:<slug>", done}`: tick a LeetCode problem. Missions tick themselves when their hidden tests pass; an accepted Companion submission ticks its problem too |
+| `GET` | `/api/me/export` | web | Everything stored about the learner, as JSON |
+| `DELETE` | `/api/me` | web | Erase the learner and all their rows; the session token stops working |
+
+The roadmap response carries `weeks[{week, focus, items[{id, kind: mission\|leetcode\|warmup, title, difficulty, minutes, url, reason, trap, done}], review, note}]`, `topics` (status per topic: planned, mastered, skipped, trimmed), `warnings`, `progress`, `coach: {summary, tips, source: ai\|template}` and `replan: {suggested, reasons}`.
 
 ---
 
@@ -117,7 +132,8 @@ Unlocks the next level. Requires a judged, failing submission; later levels need
 |---|---|---|---|
 | `GET` | `/api/portfolio/{handle}` | public | `{handle, name, verified: {concepts, all_concepts, mistakes, stats, solved}, imports: {codeforces?, leetcode?}, typing}` |
 | `POST` | `/api/imports` | web · 6/min | `{platform: "codeforces"\|"leetcode", handle}` → `202 {status: "queued"\|"cached"}`; poll the portfolio |
-| `POST` | `/api/typing/results` | web | `{snippet_id, concept?, cpm (0–3000), accuracy (0–1), duration_ms, errors}` → `{best_cpm, accuracy, runs}` |
+| `GET` | `/api/typing/drills` | web | `{drills: [{id, title, concept, code, source: corpus\|own, reason, recommended}], focus: {syntax, concepts}, summary}` |
+| `POST` | `/api/typing/results` | web · 20/min | `{snippet_id, auto_indent, duration_ms, errors: {expected_char: wrong_keys}, syntax_errors}` → `{run: {cpm, wpm, accuracy, syntax_accuracy, chars, personal_best}, summary}`. Speed and accuracy are computed on the server from the snippet; impossible runs (over 1,500 chars/min) are rejected with `422` |
 
 Imported stats are mapped onto the same concept ids and shown as **imported**, separate from skills **verified** by CodeQuest's hidden tests.
 

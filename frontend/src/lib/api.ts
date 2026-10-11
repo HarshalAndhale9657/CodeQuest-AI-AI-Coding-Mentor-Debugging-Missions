@@ -8,7 +8,13 @@ import type {
   ImportPlatform,
   Me,
   Portfolio,
+  ProfileInput,
+  ProfileView,
+  Roadmap,
   SubmissionView,
+  TypingDrills,
+  TypingRunInput,
+  TypingRunResult,
 } from "./types";
 
 const TOKEN_KEY = "codequest.token";
@@ -76,6 +82,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+/** Keeps the cached display name in step after the learner renames themselves. */
+export function setStoredName(name: string): void {
+  safeStorage()?.setItem(NAME_KEY, name);
+}
+
 export async function startSession(persona: "priya" | "guest", name?: string): Promise<void> {
   const body = await request<{ token: string; user: { name: string } }>("/api/session", {
     method: "POST",
@@ -109,6 +120,19 @@ export const api = {
   aiStatus: () => request<AiStatus>("/api/settings/ai"),
   setAi: (enabled: boolean) =>
     request<AiStatus>("/api/settings/ai", { method: "POST", body: JSON.stringify({ enabled }) }),
+  profile: () => request<ProfileView>("/api/me/profile"),
+  updateProfile: (input: ProfileInput) =>
+    request<ProfileView>("/api/me/profile", { method: "PUT", body: JSON.stringify(input) }),
+  roadmap: () => request<Roadmap>("/api/me/roadmap"),
+  replan: (useAi: boolean) =>
+    request<Roadmap>("/api/me/roadmap", { method: "POST", body: JSON.stringify({ use_ai: useAi }) }),
+  markRoadmapItem: (itemId: string, done: boolean) =>
+    request<Roadmap>("/api/me/roadmap/items", { method: "POST", body: JSON.stringify({ item_id: itemId, done }) }),
+  typingDrills: () => request<TypingDrills>("/api/typing/drills"),
+  postTypingRun: (input: TypingRunInput) =>
+    request<TypingRunResult>("/api/typing/results", { method: "POST", body: JSON.stringify(input) }),
+  exportData: () => request<Record<string, unknown>>("/api/me/export"),
+  deleteAccount: () => request<{ deleted: boolean }>("/api/me", { method: "DELETE" }),
   attacks: () => request<ArenaAttack[]>("/api/arena/attacks"),
   runAttack: (index: number) =>
     request<ArenaResult>("/api/arena/run", { method: "POST", body: JSON.stringify({ index }) }),

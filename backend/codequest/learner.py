@@ -58,6 +58,8 @@ class LearnerState:
     solved: list[str] = field(default_factory=list)
     attempts: int = 0
     ai_enabled: bool = True   # learner's own preference for AI-worded hints
+    profile: dict[str, Any] | None = None   # onboarding answers (goal, time, level); None until onboarded
+    roadmap_done: list[str] = field(default_factory=list)   # LeetCode slugs the learner marked done
 
     def to_dict(self) -> dict[str, Any]:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}

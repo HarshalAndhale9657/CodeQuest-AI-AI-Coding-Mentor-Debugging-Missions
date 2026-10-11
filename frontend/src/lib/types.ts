@@ -149,6 +149,8 @@ export interface Me {
   };
   solved: string[];
   next_up: NextUpItem[];
+  profile: Profile | null;
+  onboarded: boolean;
 }
 
 export interface HintResponse {
@@ -232,5 +234,161 @@ export interface Portfolio {
     solved: { id: string; title: string; tier: number }[];
   };
   imports: Partial<Record<ImportPlatform, ImportRow>>;
-  typing: { best_cpm: number; accuracy: number; runs: number } | null;
+  typing: TypingSummary | null;
+}
+
+/* ---------------------------------------------------------------- personal profile */
+
+export type GoalId = "learn_python" | "service_placement" | "product_placement" | "faang" | "competitive";
+export type LevelId = "new" | "basics" | "some_leetcode" | "intermediate" | "advanced";
+
+export interface Profile {
+  goal: GoalId;
+  deadline_weeks: number | null;
+  hours_per_week: number;
+  level: LevelId;
+  premium_ok: boolean;
+  comfortable: string[];
+  updated?: number;
+}
+
+export interface ProfileInput extends Omit<Profile, "updated"> {
+  name?: string;
+}
+
+export interface TopicOption {
+  id: string;
+  label: string;
+  layer: "python" | "dsa";
+}
+
+export interface ProfileView {
+  name: string;
+  handle: string;
+  profile: Profile | null;
+  onboarded: boolean;
+  options: {
+    goals: { id: GoalId; label: string }[];
+    levels: { id: LevelId; label: string }[];
+    topics: TopicOption[];
+  };
+}
+
+/* ---------------------------------------------------------------- roadmap */
+
+export interface RoadmapItem {
+  id: string;
+  kind: "mission" | "leetcode" | "warmup";
+  title: string;
+  topic: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  minutes: number;
+  url: string;
+  reason: string;
+  lists: string[];
+  trap: boolean;
+  premium?: boolean;
+  mission_type?: "build" | "debug";
+  done: boolean;
+}
+
+export interface RoadmapWeek {
+  week: number;
+  focus: string[];
+  items: RoadmapItem[];
+  minutes: number;
+  review_minutes: number;
+  review: string;
+  done: number;
+  note: string;
+}
+
+export interface RoadmapTopic {
+  id: string;
+  label: string;
+  layer: "python" | "dsa";
+  status: "planned" | "mastered" | "skipped" | "trimmed";
+  reason: string;
+  source: "verified" | "level" | "self-reported" | "imported";
+  items?: number;
+}
+
+export interface Roadmap {
+  version: number;
+  created: number | null;
+  goal_label: string;
+  level_label: string;
+  profile: Profile;
+  weekly_minutes: number;
+  pace: number;
+  topics: RoadmapTopic[];
+  warnings: string[];
+  compressed: boolean;
+  weeks: RoadmapWeek[];
+  current_week: number | null;
+  progress: { done: number; total: number; minutes_left: number };
+  coach: { summary: string; tips: string[]; source: "ai" | "template"; model: string | null };
+  replan: { suggested: boolean; reasons: string[] };
+  ai: { available: boolean; enabled: boolean };
+}
+
+/* ---------------------------------------------------------------- Syntax Warm-up */
+
+export interface TypingDrill {
+  id: string;
+  title: string;
+  concept: string;
+  code: string;
+  source: "corpus" | "own";
+  lines: number;
+  chars: number;
+  reason: string;
+  recommended: boolean;
+}
+
+export interface TypingRunPoint {
+  cpm: number;
+  wpm: number;
+  accuracy: number;
+  snippet_id: string;
+  created: number;
+}
+
+export interface TypingSummary {
+  best_cpm: number;
+  best_wpm: number;
+  accuracy: number;
+  syntax_accuracy: number | null;
+  runs: number;
+  pace_cpm: number | null;
+  top_errors: [string, number][];
+  recent: TypingRunPoint[];
+}
+
+export interface TypingDrills {
+  drills: TypingDrill[];
+  focus: { syntax: string[]; concepts: string[] };
+  summary: TypingSummary | null;
+}
+
+export interface TypingRunInput {
+  snippet_id: string;
+  auto_indent: boolean;
+  duration_ms: number;
+  errors: Record<string, number>;
+  syntax_errors: number;
+}
+
+export interface TypingRunResult {
+  run: {
+    cpm: number;
+    wpm: number;
+    accuracy: number;
+    syntax_accuracy: number | null;
+    chars: number;
+    errors: number;
+    duration_ms: number;
+    personal_best: boolean;
+  };
+  summary: TypingSummary;
 }

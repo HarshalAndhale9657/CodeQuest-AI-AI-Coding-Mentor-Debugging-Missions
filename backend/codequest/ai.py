@@ -58,10 +58,10 @@ class ProviderError(Exception):
     """The provider answered, but not with usable text (refusal, empty, malformed)."""
 
 
-def _post(url: str, body: dict, headers: dict[str, str]) -> dict:
+def _post(url: str, body: dict, headers: dict[str, str], timeout: float = TIMEOUT_S) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:  # noqa: S310 (fixed https hosts)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (fixed https hosts)
         return json.loads(resp.read(200_000))
 
 

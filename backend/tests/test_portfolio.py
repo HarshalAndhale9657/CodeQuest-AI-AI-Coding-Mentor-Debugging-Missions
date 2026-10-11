@@ -111,12 +111,12 @@ def test_import_rejects_unknown_platform_and_requires_auth(env):
 def test_typing_results_feed_portfolio(env):
     client, _ = env
     h, handle = login(client)
-    body = {"snippet_id": "listcomp", "concept": "lists", "cpm": 210, "accuracy": 0.96,
-            "duration_ms": 30000, "errors": {"(": 2}}
-    assert client.post("/api/typing/results", json=body, headers=h).json()["best_cpm"] == 210
-    client.post("/api/typing/results", json=body | {"cpm": 180}, headers=h)
-    assert client.get(f"/api/portfolio/{handle}").json()["typing"]["best_cpm"] == 210
-    assert client.post("/api/typing/results", json=body | {"cpm": 99999}, headers=h).status_code == 422
+    drill = client.get("/api/typing/drills", headers=h).json()["drills"][0]
+    body = {"snippet_id": drill["id"], "duration_ms": 30000, "errors": {"(": 2}, "syntax_errors": 2}
+    best = client.post("/api/typing/results", json=body, headers=h).json()["summary"]["best_cpm"]
+    client.post("/api/typing/results", json=body | {"duration_ms": 45000}, headers=h)
+    assert client.get(f"/api/portfolio/{handle}").json()["typing"]["best_cpm"] == best
+    assert client.post("/api/typing/results", json=body | {"duration_ms": 1000}, headers=h).status_code == 422
 
 
 def test_mistakes_timeline_orders_recurring_first():

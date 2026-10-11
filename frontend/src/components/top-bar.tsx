@@ -12,6 +12,8 @@ import { UserMenu } from "./user-menu";
 
 const NAV = [
   { href: "/home", label: "Quest" },
+  { href: "/roadmap", label: "Roadmap", match: ["/roadmap", "/onboarding"] },
+  { href: "/typing", label: "Typing" },
   { href: "/arena", label: "Arena" },
   { href: "/profile", label: "Profile", match: ["/profile", "/u/"] },
   { href: "/settings", label: "Settings" },

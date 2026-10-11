@@ -76,3 +76,11 @@ export function initials(name: string): string {
       .join("") || "?"
   );
 }
+
+/** 95 -> "1 h 35 min", 60 -> "1 h", 25 -> "25 min". */
+export function formatMinutes(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = Math.round(total % 60);
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}

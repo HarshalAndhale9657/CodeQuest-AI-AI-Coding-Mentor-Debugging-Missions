@@ -19,7 +19,7 @@ from codequest.hints import LadderState, code_hash, gate, leak_check, max_level,
 from codequest.judge import JudgeResult, MistakeEvent, SubmissionTooLarge, TestOutcome, judge
 from codequest.learner import (LEVEL_PRIOR, LearnerState, attempt_score, concept_bands, finish_attempt, next_up,
                                record_mistakes, start_attempt)
-from codequest import portfolio
+from codequest import portfolio, roadmap, typing_drills
 from codequest.ai import AILayer
 from codequest.companion_chat import CHAT_MODEL_DEFAULT, ChatRequest, CompanionTutor
 from codequest.sandbox.runner import Runner
@@ -32,6 +32,8 @@ CHAT_PER_MINUTE = 30        # all tutor messages (rule replies are free, this on
 CHAT_AI_PER_MINUTE = 8      # paid model calls; past this the learner gets the rule-based reply
 AI_SPENT_KEY = "ai_spent_usd"
 AI_WORDED_LEVEL = 1
+ROADMAP_PER_MINUTE = 4      # re-plans (each may call the model once)
+TYPING_PER_MINUTE = 20      # drill results
 
 
 def _float(value: str | None) -> float:
@@ -51,8 +53,10 @@ class ServiceError(Exception):
 
 
 class RateLimiter:
-    def __init__(self, per_minute: int):
+    def __init__(self, per_minute: int,
+                 message: str = "Too many submissions. Take a breath and read the feedback first."):
         self.per_minute = per_minute
+        self.message = message
         self._hits: dict[str, collections.deque] = collections.defaultdict(collections.deque)
         self._lock = threading.Lock()
 
@@ -64,8 +68,7 @@ class RateLimiter:
                 hits.popleft()
             if len(hits) >= self.per_minute:
                 retry = int(60 - (now - hits[0])) + 1
-                raise ServiceError(429, "Too many submissions. Take a breath and read the feedback first.",
-                                   retry_after=retry)
+                raise ServiceError(429, self.message, retry_after=retry)
             hits.append(now)
 
 
@@ -81,9 +84,15 @@ PRIYA_HISTORY: tuple[tuple[str, tuple[str, ...], float], ...] = (
 )
 
 
+# Priya's onboarding answers: a product-company placement in 12 weeks at 8 hours a week.
+PRIYA_PROFILE: dict[str, Any] = {"goal": "product_placement", "deadline_weeks": 12, "hours_per_week": 8,
+                                 "level": "basics", "premium_ok": False, "comfortable": []}
+
+
 def _seed_state(persona: str, challenges: dict[str, Challenge]) -> LearnerState:
     state = LearnerState(prior=LEVEL_PRIOR["basics"])
     if persona == "priya":
+        state.profile = dict(PRIYA_PROFILE, updated=time.time())
         for challenge_id, mistakes, score in PRIYA_HISTORY:
             if challenge_id not in challenges:
                 continue  # content changed; the remaining history still tells a consistent story
@@ -110,6 +119,16 @@ class CodeQuestService:
         self._chat_limit = RateLimiter(CHAT_PER_MINUTE)
         self._chat_ai_limit = RateLimiter(CHAT_AI_PER_MINUTE)
         self.fetchers = portfolio.FETCHERS  # tests swap in fakes; no network in CI
+        # Roadmap coach notes: same budget and kill switch; notes are cached in kv so equal plans cost once.
+        coach_key = os.environ.get("OPENAI_API_KEY") or None
+        coach_model = os.environ.get("CQ_ROADMAP_MODEL", roadmap.COACH_MODEL_DEFAULT)
+        self.coach = roadmap.RoadmapCoach(
+            lambda: self.ai, roadmap.openai_coach_provider(coach_key, coach_model) if coach_key else None,
+            store.get_kv, store.set_kv, model=coach_model)
+        self._roadmap_limit = RateLimiter(ROADMAP_PER_MINUTE, "You've re-planned a lot in a minute. "
+                                                              "Give the current plan a try first.")
+        self._typing_limit = RateLimiter(TYPING_PER_MINUTE, "That's a lot of runs in a minute. "
+                                                            "Take a short break and come back.")
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=True)
@@ -313,6 +332,8 @@ class CodeQuestService:
             },
             "solved": state.solved,
             "next_up": next_up(state, self.challenges),
+            "profile": state.profile,
+            "onboarded": state.profile is not None,
         }
 
     # ------------------------------------------------------------------ AI preference
@@ -365,11 +386,14 @@ class CodeQuestService:
     # ------------------------------------------------------------------ portfolio
     def portfolio(self, handle: str) -> dict[str, Any]:
         prefix = portfolio.handle_id_prefix(handle)
-        matches = [u for u in self.store.users_by_id_prefix(prefix or "") if portfolio.public_handle(u) == handle] \
-            if prefix else []
+        candidates = self.store.users_by_id_prefix(prefix) if prefix else []
+        matches = [u for u in candidates if portfolio.public_handle(u) == handle]
+        if not matches and len(candidates) == 1:
+            matches = candidates  # the learner renamed themselves: old links still resolve (to the new handle)
         if not matches:
             raise ServiceError(404, "No portfolio with that handle.")
         user = matches[0]
+        handle = portfolio.public_handle(user)
         state = self._state(user)
         bands = concept_bands(state, self.challenges)
         hints = sum(len(_json(a["ladder"]).get("shown", [])) for a in self.store.user_attempts(user["id"])
@@ -394,7 +418,7 @@ class CodeQuestService:
                            for c in solved if c in self.challenges],
             },
             "imports": imports,
-            "typing": self.store.typing_summary(user["id"]),
+            "typing": typing_drills.summarize(self.store.typing_runs(user["id"])),
         }
 
     def request_import(self, user: dict[str, Any], platform: str, handle: str) -> dict[str, Any]:
@@ -408,10 +432,214 @@ class CodeQuestService:
         self._pool.submit(portfolio.refresh_import, self.store, user["id"], platform, handle, self.fetchers)
         return {"status": "queued"}
 
+    # ------------------------------------------------------------------ personal profile
+    def _fresh(self, user: dict[str, Any]) -> tuple[dict[str, Any], LearnerState]:
+        fresh = self.store.user_by_token(user["token"]) or user
+        return fresh, self._state(fresh)
+
+    def _profile_view(self, user: dict[str, Any], state: LearnerState) -> dict[str, Any]:
+        return {
+            "name": user["name"],
+            "handle": portfolio.public_handle(user),
+            "profile": state.profile,
+            "onboarded": state.profile is not None,
+            "options": {
+                "goals": [{"id": k, "label": g.label} for k, g in roadmap.GOALS.items()],
+                "levels": [{"id": k, "label": v} for k, v in roadmap.LEVELS.items()],
+                "topics": [{"id": t.id, "label": t.label, "layer": t.layer} for t in roadmap.TOPICS],
+            },
+        }
+
+    def get_profile(self, user: dict[str, Any]) -> dict[str, Any]:
+        return self._profile_view(*self._fresh(user))
+
+    def update_profile(self, user: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+        """Save onboarding answers. The level sets the skill prior for concepts with no evidence yet."""
+        with self._user_locks[user["id"]]:
+            _, state = self._fresh(user)
+            state.profile = {
+                "goal": data["goal"],
+                "deadline_weeks": data.get("deadline_weeks"),
+                "hours_per_week": int(data["hours_per_week"]),
+                "level": data["level"],
+                "premium_ok": bool(data.get("premium_ok")),
+                "comfortable": list(dict.fromkeys(data.get("comfortable") or [])),
+                "updated": time.time(),
+            }
+            state.prior = float(LEVEL_PRIOR[data["level"]])
+            self.store.save_state(user["id"], state.to_dict())
+            if data.get("name"):
+                self.store.update_name(user["id"], data["name"])
+        return self.get_profile(user)
+
+    # ------------------------------------------------------------------ roadmap
+    def _plan_inputs(self, user_id: str, state: LearnerState) -> roadmap.PlanInputs:
+        mastered = {b["concept"] for b in concept_bands(state, self.challenges)
+                    if b["band"] == "mastered" and b["concept"] in roadmap.TOPIC_BY_ID}
+        imported: set[str] = set()
+        for row in self.store.imports_for(user_id):
+            if row["status"] in ("ok", "stale") and row["data"]:
+                imported.update(c for c in row["data"].get("concepts", []) if c in roadmap.TOPIC_BY_ID)
+        return roadmap.PlanInputs(profile=state.profile or {}, state=state, challenges=self.challenges,
+                                  mastered=mastered, imported=imported, done_external=set(state.roadmap_done))
+
+    def _require_profile(self, state: LearnerState) -> None:
+        if state.profile is None:
+            raise ServiceError(409, "Tell CodeQuest your goal and schedule first, then it can plan your roadmap.",
+                               code="profile_required")
+
+    def _build_roadmap(self, user: dict[str, Any], state: LearnerState, use_ai: bool) -> dict[str, Any]:
+        plan = roadmap.build_plan(self._plan_inputs(user["id"], state))
+        # The model call can take seconds: no learner lock is held here, and only the notes come from AI.
+        coach = self.coach.notes(plan, ai_allowed=use_ai and state.ai_enabled)
+        previous = self.store.get_roadmap(user["id"])
+        version = int(previous.get("version", 0)) + 1 if previous else 1
+        plan = roadmap.stamp(plan, coach, version)
+        self.store.save_roadmap(user["id"], version, plan)
+        return plan
+
+    def get_roadmap(self, user: dict[str, Any]) -> dict[str, Any]:
+        fresh, state = self._fresh(user)
+        self._require_profile(state)
+        plan = self.store.get_roadmap(fresh["id"])
+        if plan is None or "weeks" not in plan or "coach" not in plan:
+            plan = self._build_roadmap(fresh, state, use_ai=False)  # first view: no surprise spend
+        return self._roadmap_view(fresh, state, plan)
+
+    def replan(self, user: dict[str, Any], use_ai: bool) -> dict[str, Any]:
+        fresh, state = self._fresh(user)
+        self._require_profile(state)
+        self._roadmap_limit.check(user["id"])
+        plan = self._build_roadmap(fresh, state, use_ai)
+        return self._roadmap_view(fresh, state, plan)
+
+    def mark_roadmap_item(self, user: dict[str, Any], item_id: str, done: bool) -> dict[str, Any]:
+        if not item_id.startswith("lc:"):
+            raise ServiceError(400, "CodeQuest missions are marked done automatically when their hidden tests pass.")
+        slug = item_id[3:]
+        if slug not in {item["slug"] for item in roadmap.load_catalog()}:
+            raise ServiceError(404, "That problem isn't in the roadmap catalog.")
+        with self._user_locks[user["id"]]:
+            _, state = self._fresh(user)
+            self._require_profile(state)
+            if done and slug not in state.roadmap_done:
+                state.roadmap_done.append(slug)
+            elif not done and slug in state.roadmap_done:
+                state.roadmap_done.remove(slug)
+            self.store.save_state(user["id"], state.to_dict())
+        return self.get_roadmap(user)
+
+    def _roadmap_view(self, user: dict[str, Any], state: LearnerState, plan: dict[str, Any]) -> dict[str, Any]:
+        solved, done_lc = set(state.solved), set(state.roadmap_done)
+        warmup_done = self.store.typing_run_count(user["id"], since=float(plan.get("created", 0))) > 0
+        coach = plan["coach"]
+        weeks, total, done, minutes_left = [], 0, 0, 0
+        for week in plan["weeks"]:
+            items = []
+            for item in week["items"]:
+                if item["kind"] == "mission":
+                    is_done = item["id"][2:] in solved
+                elif item["kind"] == "leetcode":
+                    is_done = item["id"][3:] in done_lc
+                else:
+                    is_done = warmup_done
+                items.append(item | {"done": is_done})
+                total += 1
+                done += is_done
+                minutes_left += 0 if is_done else item["minutes"]
+            weeks.append(week | {"items": items, "done": sum(i["done"] for i in items),
+                                 "note": coach["weeks"].get(str(week["week"]), "")})
+        reasons = roadmap.replan_reasons(plan.get("inputs", {}),
+                                         roadmap.plan_inputs_snapshot(self._plan_inputs(user["id"], state)))
+        return {
+            "version": plan.get("version", 1),
+            "created": plan.get("created"),
+            "goal_label": plan["goal_label"],
+            "level_label": plan["level_label"],
+            "profile": plan["profile"],
+            "weekly_minutes": plan["weekly_minutes"],
+            "pace": plan["pace"],
+            "topics": plan["topics"],
+            "warnings": plan["warnings"],
+            "compressed": plan["compressed"],
+            "weeks": weeks,
+            "current_week": next((w["week"] for w in weeks if w["done"] < len(w["items"])), None),
+            "progress": {"done": done, "total": total, "minutes_left": minutes_left},
+            "coach": {"summary": coach["summary"], "tips": coach["tips"], "source": coach["source"],
+                      "model": coach.get("model")},
+            "replan": {"suggested": bool(reasons), "reasons": reasons},
+            "ai": {"available": self.coach.available, "enabled": self.coach.available and state.ai_enabled},
+        }
+
+    # ------------------------------------------------------------------ Syntax Warm-up (typing)
+    def _own_snippets(self, user_id: str) -> list[typing_drills.Snippet]:
+        rows = [(r["challenge_id"], self.challenges[r["challenge_id"]].title,
+                 self.challenges[r["challenge_id"]].concepts.primary, r["code"])
+                for r in self.store.passing_submissions(user_id) if r["challenge_id"] in self.challenges]
+        return typing_drills.own_snippets(rows)
+
+    def _find_snippet(self, user_id: str, snippet_id: str) -> typing_drills.Snippet:
+        pool = self._own_snippets(user_id) if snippet_id.startswith("own-") else typing_drills.load_corpus()
+        snippet = next((s for s in pool if s.id == snippet_id), None)
+        if snippet is None:
+            raise ServiceError(404, "Unknown typing drill.")
+        return snippet
+
+    def typing_drills(self, user: dict[str, Any]) -> dict[str, Any]:
+        fresh, state = self._fresh(user)
+        bands = sorted(concept_bands(state, self.challenges), key=lambda b: b["p_median"])
+        weak = [b["concept"] for b in bands if b["band"] in ("learning", "almost")]
+        for item in next_up(state, self.challenges):
+            concept = self.challenges[item["challenge_id"]].concepts.primary
+            if concept not in weak:
+                weak.append(concept)
+        syntax = [k for k in state.recurring if k.startswith("syntax:")]
+        syntax += [k for k, m in state.mistakes.items() if k.startswith("syntax:") and m >= 1.0 and k not in syntax]
+        runs = self.store.typing_runs(fresh["id"])
+        recent = [r["snippet_id"] for r in reversed(runs[:5])]
+        drills = typing_drills.recommend(typing_drills.load_corpus(), self._own_snippets(fresh["id"]), weak,
+                                         syntax, recent)
+        return {"drills": drills, "focus": {"syntax": syntax, "concepts": weak[:5]},
+                "summary": typing_drills.summarize(runs)}
+
     def typing_result(self, user: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
-        self.store.add_typing_result(user["id"], body["snippet_id"], body.get("concept"), body["cpm"],
-                                     body["accuracy"], body["duration_ms"], body.get("errors", {}))
-        return self.store.typing_summary(user["id"]) or {}
+        self._typing_limit.check(user["id"])
+        snippet = self._find_snippet(user["id"], body["snippet_id"])
+        errors = body.get("errors") or {}
+        try:
+            run = typing_drills.compute_run(snippet.code, bool(body.get("auto_indent", True)), errors,
+                                            int(body["duration_ms"]), int(body.get("syntax_errors", 0)))
+        except ValueError as exc:
+            raise ServiceError(422, str(exc)) from exc
+        before = typing_drills.summarize(self.store.typing_runs(user["id"]))
+        self.store.add_typing_result(user["id"], snippet.id, snippet.concept, run, errors)
+        personal_best = before is None or run["cpm"] > before["best_cpm"]
+        return {"run": run | {"personal_best": personal_best},
+                "summary": typing_drills.summarize(self.store.typing_runs(user["id"]))}
+
+    # ------------------------------------------------------------------ your data
+    def export_data(self, user: dict[str, Any]) -> dict[str, Any]:
+        """Everything CodeQuest stores about this learner, as JSON (data portability)."""
+        fresh, state = self._fresh(user)
+        return {
+            "exported_at": time.time(),
+            "user": {"name": fresh["name"], "handle": portfolio.public_handle(fresh), "created": fresh["created"]},
+            "learner": state.to_dict(),
+            "attempts": [{"challenge_id": a["challenge_id"], "open": bool(a["open"]), "failed": a["failed"],
+                          "best_hidden": a["best_hidden"], "hints": (_json(a["ladder"]) or {}).get("shown", []),
+                          "created": a["created"]} for a in self.store.user_attempts(fresh["id"])],
+            "submissions": [{"challenge_id": r["challenge_id"], "code": r["code"], "status": r["status"],
+                             "result": _json(r["result"]), "created": r["created"]}
+                            for r in self.store.user_submissions(fresh["id"])],
+            "imports": self.store.imports_for(fresh["id"]),
+            "typing": self.store.typing_runs(fresh["id"], limit=100_000),
+            "roadmap": self.store.get_roadmap(fresh["id"]),
+        }
+
+    def delete_account(self, user: dict[str, Any]) -> dict[str, Any]:
+        with self._user_locks[user["id"]]:
+            self.store.delete_user(user["id"])
+        return {"deleted": True}
 
     # ------------------------------------------------------------------ LeetCode Companion
     def create_pairing_code(self, user: dict[str, Any]) -> dict[str, Any]:
@@ -438,6 +666,8 @@ class CodeQuestService:
             state = self._state(fresh)
             start_attempt(state)
             newly = record_mistakes(state, keys)
+            if verdict == "accepted" and slug not in state.roadmap_done:
+                state.roadmap_done.append(slug)  # an accepted LeetCode problem ticks off its roadmap item
             self.store.save_state(user["id"], state.to_dict())
         return {"recorded_mistakes": keys, "newly_recurring": newly, "concepts": extension.concepts_for_tags(tags),
                 "slug": slug}

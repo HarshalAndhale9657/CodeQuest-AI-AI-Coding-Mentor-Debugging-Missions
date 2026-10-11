@@ -93,6 +93,8 @@ Details: [Mentor Engine](docs/MENTOR_ENGINE.md) · [Security Model](docs/SECURIT
 | **Debug missions** | 5 hand-written broken programs with line budgets that train the skill the brief cares about most: reading and fixing code |
 | **Sandbox Arena** (`/arena`) | A live red-team demo: file theft, network calls, cloud-metadata access, shell, fork bomb, memory bomb, infinite loop and output flood, all contained in front of the judges |
 | **Guarded AI with a kill switch** | Optional rewording with a fact check, leak guard, persisted budget, circuit breaker and provider fallback. Settings shows provider, budget left, hints reworded and **leaks blocked** |
+| **Personal roadmap** (`/roadmap`) | A 2-minute onboarding (goal, deadline, hours a week, level; no personal data) builds a week-by-week plan over a 25-topic prerequisite graph, mixing CodeQuest missions with 184 hand-picked LeetCode problems (link-out only) at the right difficulty. Recurring mistakes put drills first, and the plan flags when it should be re-planned. OpenAI writes the coach notes from the plan's facts only, behind a guard (no code, no links, no invented numbers) |
+| **Syntax Warm-up** (`/typing`) | An animated, accuracy-first code-typing trainer: real Python picked for your weak concepts and recurring syntax slips, drills built from your own passing code, a personal pace caret, and speed computed on the server so results can't be faked |
 | **Unified portfolio** (`/u/<handle>`) | A shareable profile that leads with skills **verified** by hidden tests, then imports public Codeforces and LeetCode stats mapped onto the same concepts |
 | **Seeded demo learner** | "Priya" is built through the real learner-model functions, so her next off-by-one turns recurring live on stage |
 | **Works offline** | Monaco is self-hosted, templates cover every feature, and the sandbox runs locally: the demo survives bad venue Wi-Fi |
@@ -332,10 +334,8 @@ Threat model, verified Arena results and known limitations: **[docs/SECURITY.md]
 
 | Next | Status |
 |---|---|
-| Syntax Warm-up trainer page (the 32-snippet corpus, results API and portfolio card are built) | Planned |
 | Companion on the Chrome Web Store, with the production server built in | Planned |
 | Real accounts (sign-in, token rotation) and Postgres for multi-node deployments | Planned |
-| Personalised roadmap of LeetCode problems from the concept map | Planned |
 | More languages through the same judge contract (JavaScript next) | Exploring |
 | In-browser execution (Pyodide) for instant visible-test runs | Exploring |
 

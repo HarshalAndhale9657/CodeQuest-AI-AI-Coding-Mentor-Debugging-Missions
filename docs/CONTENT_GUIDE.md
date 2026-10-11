@@ -136,4 +136,8 @@ python -m pytest tests/test_content.py tests/test_mentor.py -q
 
 ## 5. Syntax Warm-up corpus
 
-[`frontend/public/data/typing-snippets.json`](../frontend/public/data/typing-snippets.json) holds **32 real Python idioms** (3–12 lines, 4-space indent) as `[{id, concept, title, code}]`, tagged by the same concepts as the missions. Typing results are recorded through `POST /api/typing/results` and summarised on the learner's portfolio (best characters per minute, accuracy, runs).
+[`content/typing/snippets.json`](../content/typing/snippets.json) holds **32 real Python idioms** (3–12 lines, 4-space indent) as `[{id, concept, title, code}]`, tagged by the same concepts as the missions. The backend validates every snippet on load (printable ASCII, no tabs or trailing spaces, valid Python), ranks them per learner (weak concepts, recurring `syntax:*` mistakes, not recently typed) and adds drills built from the learner's own passing code. Results go through `POST /api/typing/results`, are scored on the server, and appear on the portfolio (best WPM, accuracy, syntax fluency, runs).
+
+### Roadmap catalog
+
+[`content/roadmap/leetcode_catalog.json`](../content/roadmap/leetcode_catalog.json) lists **184 LeetCode problems** as `{slug, title, difficulty, topic, lists, premium?}`, covering all 25 roadmap topics (7 Python foundations, 18 NeetCode-style DSA topics). We store only slugs and titles and link out: never statements or hints. `lists` marks `blind75`, `neetcode150` and beginner `starter` problems; `premium: true` problems appear only for learners who have LeetCode Premium. [`content/concept_map.json`](../content/concept_map.json) maps imported LeetCode and Codeforces tags onto the same topic ids.

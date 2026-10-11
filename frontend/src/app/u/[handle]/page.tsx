@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Brain, Bug, Check, CheckCircle2, Keyboard, Lightbulb, Link2, ListChecks, Trophy } from "lucide-react";
+import { ArrowRight, BadgeCheck, Brain, Bug, Check, CheckCircle2, Keyboard, Lightbulb, Link2, ListChecks, Map as MapIcon, Trophy } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { DifficultyLabel, Tag } from "@/components/ui/tag";
 import { Avatar } from "@/components/user-menu";
 import { ApiError, api, getToken } from "@/lib/api";
 import { conceptLabel, mistakeLabel } from "@/lib/format";
-import type { ImportPlatform, ImportRow, Portfolio, SkillBand } from "@/lib/types";
+import type { ImportPlatform, ImportRow, Me, Portfolio, SkillBand } from "@/lib/types";
 
 export default function PortfolioPage() {
   return (
@@ -30,6 +30,12 @@ function PortfolioView() {
   const portfolio = useQuery({ queryKey: ["portfolio", handle], queryFn: () => api.portfolio(handle) });
   const me = useQuery({ queryKey: ["me"], queryFn: api.me, enabled: !!getToken() });
   const own = me.data?.user.handle === handle;
+  const router = useRouter();
+  const canonical = portfolio.data?.handle;
+  useEffect(() => {
+    // The learner renamed themselves: the old link still resolves, so move to the current handle.
+    if (canonical && canonical !== handle) router.replace(`/u/${canonical}`);
+  }, [canonical, handle, router]);
 
   if (portfolio.isError) {
     const notFound = portfolio.error instanceof ApiError && portfolio.error.status === 404;
@@ -56,7 +62,8 @@ function PortfolioView() {
     <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="space-y-4">
         <IdentityCard p={p} own={own} />
-        <TypingCard typing={p.typing} />
+        {own && me.data && <PlanCard me={me.data} />}
+        <TypingCard typing={p.typing} own={own} />
       </div>
       <div className="min-w-0 space-y-4">
         <StatsCard p={p} />
@@ -391,19 +398,62 @@ function SolvedCard({ p }: { p: Portfolio }) {
   );
 }
 
-function TypingCard({ typing }: { typing: Portfolio["typing"] }) {
+function PlanCard({ me }: { me: Me }) {
+  const goal = me.profile ? GOAL_LABEL[me.profile.goal] : null;
+  return (
+    <Link href={me.onboarded ? "/roadmap" : "/onboarding"} className="group block rounded-lc bg-layer-1 p-4 transition-colors hover:bg-hover">
+      <span className="flex items-center gap-2 text-sm font-semibold text-text-1">
+        <MapIcon size={16} className="text-blue" aria-hidden /> {me.onboarded ? "Your plan" : "Set your goal"}
+        <ArrowRight size={15} className="ml-auto text-text-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+      </span>
+      <span className="mt-1 block text-xs text-text-2">
+        {me.profile
+          ? `${goal} · ${me.profile.hours_per_week} h/week${me.profile.deadline_weeks ? ` · ${me.profile.deadline_weeks} weeks` : ""}`
+          : "Answer four questions to get a personal week-by-week roadmap."}
+      </span>
+      <span className="mt-1 block text-[11px] text-text-3">Only you can see this card.</span>
+    </Link>
+  );
+}
+
+const GOAL_LABEL: Record<NonNullable<Me["profile"]>["goal"], string> = {
+  learn_python: "Learn Python",
+  service_placement: "Service-company placement",
+  product_placement: "Product-company placement",
+  faang: "FAANG interviews",
+  competitive: "Competitive programming",
+};
+
+function TypingCard({ typing, own }: { typing: Portfolio["typing"]; own: boolean }) {
   return (
     <Card className="pb-5">
-      <CardTitle icon={<Keyboard size={18} className="text-cyan" aria-hidden />}>Code typing</CardTitle>
+      <CardTitle
+        icon={<Keyboard size={18} className="text-cyan" aria-hidden />}
+        action={
+          own ? (
+            <Link href="/typing" className="text-xs text-brand hover:underline">
+              Practise
+            </Link>
+          ) : undefined
+        }
+      >
+        Code typing
+      </CardTitle>
       {typing ? (
-        <div className="grid grid-cols-3 gap-2 px-4 pt-4 text-center">
+        <div className="grid grid-cols-2 gap-2 px-4 pt-4 text-center">
           <div className="rounded-lc bg-panel py-2">
-            <p className="text-lg font-semibold tabular-nums text-text-1">{Math.round(typing.best_cpm)}</p>
-            <p className="text-[11px] text-text-3">Best CPM</p>
+            <p className="text-lg font-semibold tabular-nums text-text-1">{Math.round(typing.best_wpm)}</p>
+            <p className="text-[11px] text-text-3">Best WPM</p>
           </div>
           <div className="rounded-lc bg-panel py-2">
             <p className="text-lg font-semibold tabular-nums text-text-1">{Math.round(typing.accuracy * 100)}%</p>
             <p className="text-[11px] text-text-3">Accuracy</p>
+          </div>
+          <div className="rounded-lc bg-panel py-2">
+            <p className="text-lg font-semibold tabular-nums text-text-1">
+              {typing.syntax_accuracy === null ? "–" : `${Math.round(typing.syntax_accuracy * 100)}%`}
+            </p>
+            <p className="text-[11px] text-text-3">Syntax fluency</p>
           </div>
           <div className="rounded-lc bg-panel py-2">
             <p className="text-lg font-semibold tabular-nums text-text-1">{typing.runs}</p>

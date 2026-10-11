@@ -16,9 +16,9 @@ from typing import Any, Literal
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from codequest import arena, extension
+from codequest import arena, extension, roadmap
 from codequest.ai import load_dotenv
 from codequest.companion_chat import MODES, ChatRequest
 from codequest.content import load_all
@@ -43,12 +43,57 @@ class ImportIn(BaseModel):
 
 
 class TypingIn(BaseModel):
-    snippet_id: str = Field(min_length=1, max_length=80)
-    concept: str | None = Field(default=None, max_length=40)
-    cpm: float = Field(ge=0, le=3000)  # ~600 WPM: anything above is not human
-    accuracy: float = Field(ge=0, le=1)
-    duration_ms: int = Field(ge=500, le=3_600_000)
-    errors: dict[str, int] = Field(default_factory=dict, max_length=200)
+    """A finished drill. Speed and accuracy are computed on the server from the snippet itself."""
+    snippet_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    auto_indent: bool = True
+    duration_ms: int = Field(ge=1000, le=3_600_000)
+    errors: dict[str, int] = Field(default_factory=dict, max_length=100)   # expected character -> wrong keys
+    syntax_errors: int = Field(default=0, ge=0, le=100_000)
+
+    @field_validator("errors")
+    @classmethod
+    def _single_chars(cls, v: dict[str, int]) -> dict[str, int]:
+        if any(len(k) != 1 or n < 0 or n > 100_000 for k, n in v.items()):
+            raise ValueError("errors maps one expected character to a non-negative count")
+        return v
+
+
+class ProfileIn(BaseModel):
+    """Onboarding answers: only what changes the plan (no email, phone, college or date of birth)."""
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    goal: roadmap.GoalId
+    deadline_weeks: int | None = Field(default=None, ge=2, le=26)
+    hours_per_week: int = Field(default=8, ge=1, le=40)
+    level: roadmap.LevelId
+    premium_ok: bool = False
+    comfortable: list[str] = Field(default_factory=list, max_length=len(roadmap.TOPICS))
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = " ".join("".join(ch for ch in v if ch.isprintable()).split())
+        if not v:
+            raise ValueError("name can't be blank")
+        return v
+
+    @field_validator("comfortable")
+    @classmethod
+    def _known_topics(cls, v: list[str]) -> list[str]:
+        unknown = sorted(set(v) - set(roadmap.TOPIC_IDS))
+        if unknown:
+            raise ValueError(f"unknown topics: {unknown}")
+        return list(dict.fromkeys(v))
+
+
+class ReplanIn(BaseModel):
+    use_ai: bool = True
+
+
+class RoadmapItemIn(BaseModel):
+    item_id: str = Field(min_length=4, max_length=130, pattern=r"^lc:[a-z0-9-]+$")
+    done: bool
 
 Slug = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9-]+$")
 TagList = Field(default_factory=list, max_length=30)
@@ -129,7 +174,7 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     app = FastAPI(title="CodeQuest AI", version="0.1.0", lifespan=lifespan)
     origins = [o.strip() for o in os.environ.get("CQ_ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_origin_regex=r"^chrome-extension://[a-p]{32}$",
-                       allow_credentials=False, allow_methods=["GET", "POST"],
+                       allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"],
                        allow_headers=["Authorization", "Content-Type"])
 
     @app.exception_handler(ServiceError)
@@ -186,9 +231,41 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     def post_import(body: ImportIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.request_import(user, body.platform, body.handle)
 
+    @app.get("/api/typing/drills")
+    def typing_drills(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.typing_drills(user)
+
     @app.post("/api/typing/results")
     def post_typing(body: TypingIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.typing_result(user, body.model_dump())
+
+    @app.get("/api/me/profile")
+    def get_profile(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.get_profile(user)
+
+    @app.put("/api/me/profile")
+    def put_profile(body: ProfileIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.update_profile(user, body.model_dump())
+
+    @app.get("/api/me/roadmap")
+    def get_roadmap(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.get_roadmap(user)
+
+    @app.post("/api/me/roadmap")
+    def replan(body: ReplanIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.replan(user, body.use_ai)
+
+    @app.post("/api/me/roadmap/items")
+    def mark_item(body: RoadmapItemIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.mark_roadmap_item(user, body.item_id, body.done)
+
+    @app.get("/api/me/export")
+    def export(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.export_data(user)
+
+    @app.delete("/api/me")
+    def delete_me(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.delete_account(user)
 
     def optional_user(authorization: str | None = Header(default=None),
                       s: CodeQuestService = Depends(svc)) -> dict[str, Any] | None:

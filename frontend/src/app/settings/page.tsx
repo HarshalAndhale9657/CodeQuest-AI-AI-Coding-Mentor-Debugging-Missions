@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ConnectExtension } from "@/components/connect-extension";
+import { DataCard, ProfileCard } from "@/components/profile/profile-settings";
 import { Card } from "@/components/ui/card";
 import { ErrorState, Skeleton } from "@/components/ui/states";
 import { Switch } from "@/components/ui/switch";
@@ -16,10 +17,12 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
           <h1 className="text-2xl font-semibold text-text-1">Settings</h1>
-          <p className="mt-1 text-sm text-text-2">Control the AI mentor and connect your LeetCode Companion.</p>
+          <p className="mt-1 text-sm text-text-2">Your profile and goals, the AI mentor, the LeetCode Companion and your data.</p>
         </header>
+        <ProfileCard />
         <AiCard />
         <ConnectExtension />
+        <DataCard />
       </div>
     </AppShell>
   );

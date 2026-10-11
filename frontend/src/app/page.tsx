@@ -93,7 +93,8 @@ export default function Landing() {
     setError(null);
     try {
       await startSession(persona);
-      router.push(persona === "priya" ? "/m/class_average" : "/home");
+      // New learners answer four questions first so their roadmap is personal from day one.
+      router.push(persona === "priya" ? "/m/class_average" : "/onboarding");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
       setBusy(null);

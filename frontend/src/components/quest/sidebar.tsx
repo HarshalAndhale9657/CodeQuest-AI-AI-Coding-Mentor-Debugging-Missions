@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Bug, Compass, Settings, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
+import { Brain, Bug, Compass, Keyboard, Map as MapIcon, Settings, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { cx } from "../ui/cx";
 import { CountBadge } from "../ui/tag";
@@ -34,6 +34,8 @@ export function QuestSidebar({ handle, recurring, debugCount, debugActive, onDeb
     <aside className="hidden lg:block" aria-label="Library">
       <div className="sticky top-[74px] space-y-1">
         <Item href="/home" icon={Compass} label="Quest" active />
+        <Item href="/roadmap" icon={MapIcon} label="My Roadmap" />
+        <Item href="/typing" icon={Keyboard} label="Syntax Warm-up" />
         <Item href="/arena" icon={ShieldCheck} label="Sandbox Arena" />
         <Item href={handle ? `/u/${handle}` : "/profile"} icon={UserRound} label="Profile" />
         <Item href="/settings" icon={Settings} label="Settings" />

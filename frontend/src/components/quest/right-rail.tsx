@@ -8,6 +8,7 @@ import type { Me, SkillBand } from "@/lib/types";
 import { Card, CardTitle } from "../ui/card";
 import { cx } from "../ui/cx";
 import { DifficultyLabel } from "../ui/tag";
+import { RoadmapCard, WarmupCard } from "./plan-cards";
 
 const BAND_TONE: Record<SkillBand["band"], string> = {
   ready: "text-text-2",
@@ -151,8 +152,10 @@ export function QuestRail({ me }: { me: Me }) {
   return (
     <aside className="space-y-4 lg:col-start-2 xl:col-start-auto" aria-label="Your progress">
       <NextUp me={me} />
+      <RoadmapCard me={me} />
       <MistakeMemory me={me} />
       <Skills skills={me.skills} />
+      <WarmupCard me={me} />
       <CompanionCard />
     </aside>
   );

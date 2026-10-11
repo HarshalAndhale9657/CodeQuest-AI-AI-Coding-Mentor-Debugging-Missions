@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS ext_tokens (
     user_id TEXT NOT NULL,
     expires REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS roadmaps (
+    user_id TEXT PRIMARY KEY,
+    version INTEGER NOT NULL,
+    plan TEXT NOT NULL,
+    created REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS kv (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -93,6 +99,15 @@ class Store:
             self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Additive, idempotent column migrations for databases created by older versions."""
+        with self._lock:
+            columns = {r["name"] for r in self._db.execute("PRAGMA table_info(typing_results)").fetchall()}
+            for name, kind in (("syntax_accuracy", "REAL"), ("chars", "INTEGER")):
+                if name not in columns:
+                    self._db.execute(f"ALTER TABLE typing_results ADD COLUMN {name} {kind}")
 
     # ------------------------------------------------------------------ helpers
     def _one(self, sql: str, args: tuple = ()) -> dict[str, Any] | None:
@@ -121,6 +136,58 @@ class Store:
 
     def save_state(self, user_id: str, state: dict[str, Any]) -> None:
         self._exec("UPDATE users SET state = ? WHERE id = ?", (json.dumps(state), user_id))
+
+    def update_name(self, user_id: str, name: str) -> None:
+        self._exec("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
+
+    def delete_user(self, user_id: str) -> None:
+        """Erase every row that belongs to a learner, in one transaction."""
+        with self._lock:
+            self._db.execute("BEGIN")
+            try:
+                for table in ("submissions", "attempts", "imports", "typing_results", "pairing_codes",
+                              "ext_tokens", "roadmaps"):
+                    self._db.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+                self._db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+                self._db.execute("COMMIT")
+            except Exception:
+                self._db.execute("ROLLBACK")
+                raise
+
+    def user_submissions(self, user_id: str) -> list[dict[str, Any]]:
+        return self._all("SELECT id, challenge_id, code, status, result, created FROM submissions "
+                         "WHERE user_id = ? ORDER BY created", (user_id,))
+
+    def passing_submissions(self, user_id: str) -> list[dict[str, Any]]:
+        """Newest passing submission per mission (judged results only)."""
+        rows = self._all("SELECT challenge_id, code, result, created FROM submissions "
+                         "WHERE user_id = ? AND status = 'done' ORDER BY created DESC", (user_id,))
+        latest: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            if row["challenge_id"] in latest:
+                continue
+            try:
+                passed = bool(json.loads(row["result"] or "{}").get("all_passed"))
+            except ValueError:
+                passed = False
+            if passed:
+                latest[row["challenge_id"]] = row
+        return list(latest.values())
+
+    # ------------------------------------------------------------------ roadmaps
+    def get_roadmap(self, user_id: str) -> dict[str, Any] | None:
+        row = self._one("SELECT * FROM roadmaps WHERE user_id = ?", (user_id,))
+        if row is None:
+            return None
+        try:
+            return json.loads(row["plan"])
+        except ValueError:
+            return None  # an unreadable plan is rebuilt rather than breaking the page
+
+    def save_roadmap(self, user_id: str, version: int, plan: dict[str, Any]) -> None:
+        self._exec("INSERT INTO roadmaps (user_id, version, plan, created) VALUES (?, ?, ?, ?) "
+                   "ON CONFLICT(user_id) DO UPDATE SET version = excluded.version, plan = excluded.plan, "
+                   "created = excluded.created", (user_id, version, json.dumps(plan), time.time()))
 
     # ------------------------------------------------------------------ attempts
     def open_attempt(self, user_id: str, challenge_id: str) -> dict[str, Any] | None:
@@ -208,20 +275,24 @@ class Store:
             row["data"] = json.loads(row["data"]) if row["data"] else None
         return rows
 
-    def add_typing_result(self, user_id: str, snippet_id: str, concept: str | None, cpm: float,
-                          accuracy: float, duration_ms: int, errors: dict[str, int]) -> None:
+    def add_typing_result(self, user_id: str, snippet_id: str, concept: str | None, run: dict[str, Any],
+                          errors: dict[str, int]) -> None:
         self._exec(
-            "INSERT INTO typing_results (id, user_id, snippet_id, concept, cpm, accuracy, duration_ms, errors, created) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (uuid.uuid4().hex, user_id, snippet_id, concept, cpm, accuracy, duration_ms, json.dumps(errors), time.time()))
+            "INSERT INTO typing_results (id, user_id, snippet_id, concept, cpm, accuracy, duration_ms, errors, "
+            "created, syntax_accuracy, chars) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (uuid.uuid4().hex, user_id, snippet_id, concept, run["cpm"], run["accuracy"], run["duration_ms"],
+             json.dumps(errors), time.time(), run["syntax_accuracy"], run["chars"]))
 
-    def typing_summary(self, user_id: str) -> dict[str, Any] | None:
-        row = self._one(
-            "SELECT MAX(cpm) AS best_cpm, AVG(accuracy) AS accuracy, COUNT(*) AS runs "
-            "FROM typing_results WHERE user_id = ?", (user_id,))
-        if not row or not row["runs"]:
-            return None
-        return {"best_cpm": round(row["best_cpm"], 1), "accuracy": round(row["accuracy"], 3), "runs": row["runs"]}
+    def typing_runs(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Most recent runs first."""
+        return self._all("SELECT snippet_id, concept, cpm, accuracy, syntax_accuracy, chars, duration_ms, errors, "
+                         "created FROM typing_results WHERE user_id = ? ORDER BY created DESC LIMIT ?",
+                         (user_id, limit))
+
+    def typing_run_count(self, user_id: str, since: float = 0.0) -> int:
+        row = self._one("SELECT COUNT(*) AS n FROM typing_results WHERE user_id = ? AND created >= ?",
+                        (user_id, since))
+        return int(row["n"]) if row else 0
 
     # ------------------------------------------------------------------ extension pairing
     def create_pairing_code(self, user_id: str, ttl_s: float = 600) -> str:

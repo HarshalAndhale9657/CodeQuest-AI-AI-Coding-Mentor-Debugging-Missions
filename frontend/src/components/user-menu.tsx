@@ -1,7 +1,7 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { Compass, LogOut, Puzzle, Settings, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { Compass, Keyboard, LogOut, Map as MapIcon, Puzzle, Settings, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -82,6 +82,8 @@ export function UserMenu({ name, handle }: { name: string; handle?: string }) {
           </div>
           <Menu.Separator className="my-3 h-px bg-line-strong" />
           <Row href="/home" label="Quest" className="md:hidden" icon={<Compass size={18} aria-hidden />} />
+          <Row href="/roadmap" label="My Roadmap" icon={<MapIcon size={18} aria-hidden />} />
+          <Row href="/typing" label="Syntax Warm-up" className="md:hidden" icon={<Keyboard size={18} aria-hidden />} />
           <Row href="/arena" label="Sandbox Arena" className="md:hidden" icon={<ShieldCheck size={18} aria-hidden />} />
           <Row href="/settings" label="Settings" icon={<Settings size={18} aria-hidden />} />
           <Menu.Item
