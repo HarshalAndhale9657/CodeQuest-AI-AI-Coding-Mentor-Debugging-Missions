@@ -1,6 +1,6 @@
 # Vortexa Hackathon: Team Workspace
 
-> **Status:** 🟡 Pre-event prep. Problem statement **not yet released**. No app code yet (pending confirmation of the rules on pre-built code).
+> **Status:** 🟡 Pre-event prep. Problem statement **E-02 CodeQuest AI** released 2026-10-11. **Master plan (draft, under team review): [CODEQUEST_MASTER_PLAN.md](CODEQUEST_MASTER_PLAN.md).** No app code yet (pending confirmation of the rules on pre-built code).
 > At feature freeze, this README gets replaced by the submission README ([template](docs/templates/SUBMISSION_README_TEMPLATE.md)).
 
 ## ⚡ When the problem statement drops
@@ -24,7 +24,8 @@
 | | [07_risk_register](docs/pm/07_risk_register.md) | Pre-mortem + mitigations |
 | | [08_decision_log](docs/pm/08_decision_log.md) | One line per decision |
 | | [09_submission_checklist](docs/pm/09_submission_checklist.md) | Final packaging |
-| **Research** | `docs/research/` | Empty; fill after the PS is released |
+| **Plan** | [CODEQUEST_MASTER_PLAN.md](CODEQUEST_MASTER_PLAN.md) | Product + system design, tiers, timeline, demo, risks for PS E-02 |
+| **Research** | [reports/](docs/research/reports/) · [research_notes/](docs/research/research_notes/) | E-02 market teardown, AI-tutor evidence, techniques, sandboxing, extension/portfolio, roadmaps, typing |
 | **Pitch** | [pitch_deck_outline](docs/pitch/pitch_deck_outline.md) | Round-1 idea deck + final pitch deck |
 | | [demo_script](docs/pitch/demo_script.md) | Timed demo script + rehearsal log |
 | **Templates** | [ps_analysis](docs/templates/ps_analysis_template.md) · [idea_assessment](docs/templates/idea_assessment_template.md) · [submission README](docs/templates/SUBMISSION_README_TEMPLATE.md) | |
