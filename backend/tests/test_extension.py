@@ -26,6 +26,33 @@ def test_analyze_finds_mistakes_inside_class_methods():
     assert "shadow_builtin" not in keys  # `self` is never reported
 
 
+PAIRWISE = '''class Solution:
+    def twoSum(self, nums, target):
+        for i in range(len(nums) - 1):
+            for j in range(i + 1, len(nums)):
+                if nums[i] + nums[j] == target:
+                    return [i, j]
+'''
+ADJACENT = '''def increasing(nums):
+    for i in range(len(nums) - 1):
+        if nums[i] >= nums[i + 1]:
+            return False
+    return True
+'''
+EARLY_STOP = '''def total(nums):
+    s = 0
+    for i in range(len(nums) - 1):
+        s += nums[i]
+    return s
+'''
+
+
+@pytest.mark.parametrize("code,flagged", [(PAIRWISE, False), (ADJACENT, False), (EARLY_STOP, True)])
+def test_pairwise_loops_are_not_off_by_one(code, flagged):
+    keys = {f["key"] for f in extension.analyze(code)["findings"]}
+    assert ("off_by_one" in keys) is flagged
+
+
 def test_analyze_reports_syntax_errors():
     result = extension.analyze("class Solution:\n    def f(self)\n        pass\n")
     assert result["syntax_error"]["line"] == 2

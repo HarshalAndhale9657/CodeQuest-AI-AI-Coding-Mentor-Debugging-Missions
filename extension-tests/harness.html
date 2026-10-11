@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CodeQuest Companion test harness</title>
+    <link rel="stylesheet" href="../extension/sidepanel.css" />
+  </head>
+  <body>
+    <!--
+      Dev-only harness: renders the real side panel (markup, CSS, JS) in a normal page with a stubbed
+      `chrome` API, so the UI can be driven end-to-end against a local CodeQuest API.
+      Serve the repo root (python -m http.server 5500) and open /extension-tests/harness.html.
+      The stubbed problem metadata and editor contents mirror what the real LeetCode page returns.
+    -->
+    <script type="module" src="harness.js"></script>
+  </body>
+</html>

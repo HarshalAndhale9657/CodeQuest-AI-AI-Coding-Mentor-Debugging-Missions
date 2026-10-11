@@ -68,8 +68,18 @@ async function api(path, body) {
 // ------------------------------------------------------------------ LeetCode page access (run in the page's MAIN world)
 
 function pageReadEditor() {
-  const models = window.monaco?.editor?.getModels?.() ?? [];
-  const candidates = models.filter((m) => !m.isDisposed() && m.getValue().trim().length > 0);
+  // LeetCode keeps several Monaco models alive (the solution editor plus plaintext/JSON test-case
+  // inputs), so prefer the model of the visible code editor, then any non-data model.
+  const NON_CODE = new Set(["plaintext", "json", "markdown"]);
+  const api = window.monaco?.editor;
+  if (!api) return null;
+  const usable = (m) => m && !m.isDisposed() && m.getValue().trim().length > 0;
+  const focused = (api.getEditors?.() ?? [])
+    .map((e) => e.getModel())
+    .filter((m) => usable(m) && !NON_CODE.has(m.getLanguageId()));
+  const candidates = focused.length > 0
+    ? focused
+    : (api.getModels?.() ?? []).filter((m) => usable(m) && !NON_CODE.has(m.getLanguageId()));
   if (candidates.length === 0) return null;
   const model = candidates.sort((a, b) => b.getValueLength() - a.getValueLength())[0];
   return { code: model.getValue(), language: model.getLanguageId() };

@@ -96,10 +96,35 @@ def detect_print_vs_return(fn: ast.FunctionDef) -> list[Finding]:
     return []
 
 
+def _uses_next_index(loop: ast.For, var: str) -> bool:
+    """True if the loop body uses `var + 1` (e.g. `x[i + 1]` or `range(i + 1, n)`): a pairwise loop."""
+    for node in ast.walk(ast.Module(body=loop.body, type_ignores=[])):
+        if (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add)
+                and isinstance(node.left, ast.Name) and node.left.id == var
+                and isinstance(node.right, ast.Constant) and node.right.value == 1):
+            return True
+    return False
+
+
+def _pairwise_ranges(fn: ast.FunctionDef) -> set[int]:
+    """ids of `range(len(x) - 1)` calls that drive pairwise loops, where stopping early is correct."""
+    ids: set[int] = set()
+    for loop in ast.walk(fn):
+        if (isinstance(loop, ast.For) and isinstance(loop.target, ast.Name) and isinstance(loop.iter, ast.Call)
+                and isinstance(loop.iter.func, ast.Name) and loop.iter.func.id == "range"
+                and any(_is_len_minus_one(a) for a in loop.iter.args)
+                and _uses_next_index(loop, loop.target.id)):
+            ids.add(id(loop.iter))
+    return ids
+
+
 def detect_off_by_one(fn: ast.FunctionDef) -> list[Finding]:
     found: list[Finding] = []
+    pairwise = _pairwise_ranges(fn)
     for node in ast.walk(fn):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "range":
+            if id(node) in pairwise:
+                continue
             for arg in node.args:
                 if _is_len_minus_one(arg):
                     found.append(Finding("off_by_one", node.lineno,
