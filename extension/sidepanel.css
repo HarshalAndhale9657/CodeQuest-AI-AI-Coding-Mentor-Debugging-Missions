@@ -1,101 +1,244 @@
-:root {
-  --ink: #0b0f17;
-  --panel: #121826;
-  --panel-2: #182033;
-  --line: #263049;
-  --muted: #8b96ad;
-  --text: #e6ebf5;
-  --accent: #7c9cff;
-  --pass: #34d399;
-  --wrong: #fbbf24;
-  --error: #f87171;
-  color-scheme: dark;
-}
+/* CodeQuest Companion: LeetCode-native side panel. Colours come from tokens.css (shared with the website). */
 
 * { box-sizing: border-box; }
+/* components below set display; keep the `hidden` attribute (used by sidepanel.js) authoritative */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
-  padding: 12px;
-  background: var(--ink);
-  color: var(--text);
-  font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--lc-bg-workspace);
+  color: var(--lc-text-1);
+  font: 14px/1.5 var(--lc-font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-h1 { font-size: 16px; margin: 0; }
-h1 span { color: var(--accent); }
-h2 { font-size: 15px; margin: 4px 0; }
-h3 { font-size: 14px; margin: 0 0 2px; }
+h1 { font-size: 15px; font-weight: 600; margin: 0; }
+h1 span { color: var(--lc-text-2); font-weight: 400; }
+h2 { font-size: 16px; font-weight: 600; margin: 2px 0 6px; }
+strong { color: var(--lc-text-1); }
 
-.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+/* header: LeetCode's #282828 top bar */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  background: var(--lc-layer-1);
+  border-bottom: 1px solid var(--lc-border);
+}
+.top .icon { margin-left: auto; }
+
+.content { padding: 10px; }
 
 .card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 10px;
+  background: var(--lc-panel);
+  border-radius: var(--lc-radius);
+  padding: 14px;
+  margin-bottom: 8px;
 }
 
-.muted { color: var(--muted); margin: 4px 0 8px; }
+.muted { color: var(--lc-text-2); margin: 4px 0 10px; }
 .small { font-size: 12px; }
 .row { display: flex; gap: 8px; align-items: center; }
+#settings .row { margin-top: 10px; }
 
-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+label { display: block; font-size: 12px; color: var(--lc-text-2); margin-bottom: 6px; }
 
 input, textarea, select {
   width: 100%;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 8px;
+  background: var(--lc-fill-2);
+  border: 1px solid transparent;
+  border-radius: var(--lc-radius-sm);
+  color: var(--lc-text-1);
+  padding: 8px 10px;
   font: inherit;
+  transition: border-color 120ms;
 }
-textarea { resize: vertical; margin-bottom: 8px; }
-#pair-code { text-transform: uppercase; letter-spacing: 0.2em; font-family: ui-monospace, Consolas, monospace; }
+input::placeholder, textarea::placeholder { color: var(--lc-text-3); }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--lc-border-strong); }
+textarea { resize: vertical; margin-bottom: 10px; min-height: 72px; }
 
+/* buttons: secondary by default, .primary = LeetCode Submit (green on #222) */
 button {
-  background: var(--accent);
-  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  background: var(--lc-fill-3);
+  color: var(--lc-text-1);
   border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: var(--lc-radius-sm);
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 120ms, color 120ms;
 }
-button:hover { filter: brightness(1.1); }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-button.ghost, button.icon { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:hover { background: var(--lc-tile); }
+button.primary { background: var(--lc-btn-dark); color: var(--lc-green-submit); box-shadow: inset 0 0 0 1px var(--lc-border); }
+button.primary:hover { background: var(--lc-hover); }
+button.ghost { background: transparent; color: var(--lc-text-2); box-shadow: inset 0 0 0 1px var(--lc-border-strong); }
+button.ghost:hover { color: var(--lc-text-1); }
+button.icon { width: 32px; padding: 0; background: transparent; color: var(--lc-text-2); }
+button.icon:hover, button.icon[aria-expanded="true"] { background: var(--lc-fill-2); color: var(--lc-text-1); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--lc-brand); outline-offset: 2px; }
+
+/* problem card */
+.problem h2 { font-size: 17px; margin: 0 0 10px; }
+.problem h2:empty { display: none; }
+#problem-status { margin: 0 0 6px; font-size: 13px; }
+#problem-status[data-difficulty] {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--lc-fill-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+#problem-status[data-difficulty="Easy"] { color: var(--lc-easy); }
+#problem-status[data-difficulty="Medium"] { color: var(--lc-medium); }
+#problem-status[data-difficulty="Hard"] { color: var(--lc-hard); }
 
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 12px; color: var(--muted); }
+.tags:empty { display: none; }
+.tag { background: var(--lc-fill-4); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--lc-text-1); }
 
+/* tools as LeetCode panels: #333 header, #262626 body */
+.tool {
+  background: var(--lc-panel);
+  border-radius: var(--lc-radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.tool > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--lc-panel-header);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.tool > summary::-webkit-details-marker { display: none; }
+.tool > summary::after {
+  content: "";
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--lc-text-2);
+  border-bottom: 2px solid var(--lc-text-2);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 150ms;
+}
+.tool:not([open]) > summary::after { transform: rotate(-45deg); }
+.tool-body { padding: 12px; }
+.tool-body > .muted:first-child { margin-top: 0; }
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--lc-fill-3);
+  color: var(--lc-text-1);
+  font-size: 11px;
+  font-weight: 600;
+}
+.step.brain { background: var(--lc-brand-bg-2); color: var(--lc-brand); font-size: 10px; }
+
+/* outputs */
 .out:empty { display: none; }
-.out { margin-top: 10px; padding: 10px; border-radius: 8px; background: var(--panel-2); }
-.hints { padding-left: 28px; }
-.hints li + li { margin-top: 6px; }
+.out { margin-top: 10px; padding: 10px 12px; border-radius: var(--lc-radius-sm); background: var(--lc-fill-2); }
+.hints { padding-left: 30px; }
+.hints li + li { margin-top: 8px; }
+.hints li::marker { color: var(--lc-medium); font-weight: 600; }
 
 .verdict { font-weight: 600; }
-.verdict.on_track { color: var(--pass); }
-.verdict.partially, .verdict.unclear { color: var(--wrong); }
-.verdict.off_track { color: var(--error); }
+.verdict.on_track { color: var(--lc-green); }
+.verdict.partially, .verdict.unclear { color: var(--lc-medium); }
+.verdict.off_track { color: var(--lc-red); }
 
-.switch { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text); margin: 6px 0; cursor: pointer; }
-.switch input { width: auto; margin-top: 3px; accent-color: var(--accent); }
-.manual { margin-top: 8px; color: var(--muted); }
-.manual summary { cursor: pointer; margin-bottom: 6px; }
-#log-last-btn { margin-top: 8px; }
-.memory-list { margin: 4px 0 0; padding-left: 18px; }
-.memory-list li { margin: 2px 0; }
-.badge { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 12px; font-weight: 600; }
-.badge.accepted { background: rgba(52, 211, 153, 0.15); color: var(--pass); }
-.badge.failed { background: rgba(248, 113, 113, 0.15); color: var(--error); }
+/* auto-log switch: native checkbox kept for state and a11y, drawn as a LeetCode toggle */
+.switch { position: relative; display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--lc-text-1); margin: 0; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 36px; height: 20px; margin: 0; cursor: pointer; }
+.switch .track {
+  position: relative;
+  flex: 0 0 36px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: var(--lc-fill-3);
+  transition: background-color 150ms;
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--lc-text-1);
+  transition: transform 150ms;
+}
+.switch input:checked + .track { background: var(--lc-green); }
+.switch input:checked + .track::after { transform: translateX(16px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--lc-brand); outline-offset: 2px; }
+
+.manual { margin-top: 10px; color: var(--lc-text-2); }
+.manual summary { cursor: pointer; margin-bottom: 8px; font-size: 13px; }
+.manual select { flex: 1; }
+#log-last-btn { margin-top: 10px; }
+
+.memory-list { margin: 6px 0 0; padding-left: 18px; }
+.memory-list li { margin: 3px 0; }
+.memory-list li::marker { color: var(--lc-red); }
+.badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; }
+.badge.accepted { background: rgba(44, 187, 93, 0.15); color: var(--lc-green); }
+.badge.failed { background: rgba(239, 71, 67, 0.15); color: var(--lc-red); }
 
 .finding { margin: 6px 0; }
-.finding b { color: var(--wrong); }
-.error { color: var(--error); }
-.ok { color: var(--pass); }
+.finding b { color: var(--lc-medium); }
+.error { color: var(--lc-red); }
+.ok { color: var(--lc-green); }
+
+/* pairing: one input drawn as six code boxes (paste and autofill keep working) */
+.pair h2 { margin-top: 0; }
+#pair-form { display: flex; flex-direction: column; gap: 10px; }
+#pair-code {
+  --cell: 40px;
+  --gap: 6px;
+  /* letter-spacing also trails the 6th character, so leave room for it or the input scrolls */
+  width: calc(6 * (var(--cell) + var(--gap)) + var(--cell) / 2);
+  height: 48px;
+  padding: 0 0 0 calc(var(--cell) / 2 - 0.5ch);
+  border: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--lc-fill-2) 0 var(--cell),
+      transparent var(--cell) calc(var(--cell) + var(--gap))
+    )
+    0 0 / calc(6 * var(--cell) + 5 * var(--gap)) 100% no-repeat;
+  border-radius: 0;
+  font: 600 22px/48px var(--lc-font-mono);
+  letter-spacing: calc(var(--cell) + var(--gap) - 1ch);
+  text-transform: uppercase;
+  caret-color: var(--lc-brand);
+  overflow: hidden;
+}
+#pair-code:focus-visible { outline: none; box-shadow: 0 2px 0 var(--lc-brand); }
+#pair-code::placeholder { color: var(--lc-text-3); }
+#pair-btn { align-self: flex-start; }
+
+footer { padding: 4px 14px 14px; }

@@ -1,10 +1,13 @@
 import type {
+  AiStatus,
   ArenaAttack,
   ArenaResult,
   ChallengeDetail,
   ChallengeSummary,
   HintResponse,
+  ImportPlatform,
   Me,
+  Portfolio,
   SubmissionView,
 } from "./types";
 
@@ -97,6 +100,15 @@ export const api = {
   me: () => request<Me>("/api/me"),
   extensionPairingCode: () =>
     request<{ code: string; expires_in_s: number }>("/api/ext/pairing-code", { method: "POST" }),
+  portfolio: (handle: string) => request<Portfolio>(`/api/portfolio/${encodeURIComponent(handle)}`),
+  requestImport: (platform: ImportPlatform, handle: string) =>
+    request<{ status: "queued" | "cached" }>("/api/imports", {
+      method: "POST",
+      body: JSON.stringify({ platform, handle }),
+    }),
+  aiStatus: () => request<AiStatus>("/api/settings/ai"),
+  setAi: (enabled: boolean) =>
+    request<AiStatus>("/api/settings/ai", { method: "POST", body: JSON.stringify({ enabled }) }),
   attacks: () => request<ArenaAttack[]>("/api/arena/attacks"),
   runAttack: (index: number) =>
     request<ArenaResult>("/api/arena/run", { method: "POST", body: JSON.stringify({ index }) }),

@@ -1,0 +1,54 @@
+/*
+ * CodeQuest design tokens: LeetCode dark palette, pixel-sampled from leetcode.com (2026-10).
+ * Source of truth: frontend/src/styles/tokens.css. extension/tokens.css must stay byte-identical
+ * (checked by frontend/scripts/check-tokens.mjs, part of `npm run lint`).
+ */
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --lc-bg: #1a1a1a;
+  --lc-bg-workspace: #0f0f0f;
+  --lc-layer-1: #282828;
+  --lc-panel: #262626;
+  --lc-panel-header: #333333;
+  --lc-menu: #303030;
+  --lc-row-alt: #272727;
+  --lc-hover: #2c2c2c;
+  --lc-fill-2: #313131;
+  --lc-fill-3: #3c3c3c;
+  --lc-fill-4: #3e3e3e;
+  --lc-tile: #404040;
+  --lc-btn-dark: #222222;
+
+  /* lines */
+  --lc-border: #313131;
+  --lc-border-strong: #464646;
+
+  /* text */
+  --lc-text-1: #f5f5f5;
+  --lc-text-2: #a8a8a8;
+  --lc-text-3: #9fa1a4;
+  --lc-text-gutter: #858585;
+
+  /* brand + status */
+  --lc-brand: #ffa116;
+  --lc-brand-bg: #2c2110;
+  --lc-brand-bg-2: #423726;
+  --lc-green: #2cbb5d;
+  --lc-green-submit: #28c244;
+  --lc-easy: #1cbaba;
+  --lc-medium: #ffb800;
+  --lc-hard: #f63737;
+  --lc-red: #ef4743;
+  --lc-blue: #0a84ff;
+  --lc-purple: #bf5af2;
+  --lc-cyan: #64d2ff;
+
+  /* shape + type */
+  --lc-radius-sm: 6px;
+  --lc-radius: 8px;
+  --lc-shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --lc-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --lc-font-mono: Menlo, Monaco, Consolas, "Courier New", monospace;
+}

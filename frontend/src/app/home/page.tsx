@@ -1,155 +1,146 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Brain, Bug, CheckCircle2, Sparkles, Trophy } from "lucide-react";
-import Link from "next/link";
+import { Search, Shuffle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { ConnectExtension } from "@/components/connect-extension";
+import { ConceptPills } from "@/components/quest/concept-pills";
+import { MissionTable, MissionTableSkeleton, type MissionRow } from "@/components/quest/mission-table";
+import { QuestRail } from "@/components/quest/right-rail";
+import { QuestSidebar } from "@/components/quest/sidebar";
+import { cx } from "@/components/ui/cx";
+import { ProgressRing } from "@/components/ui/progress-ring";
+import { ErrorState, Skeleton } from "@/components/ui/states";
 import { ApiError, api } from "@/lib/api";
-import { conceptLabel, mistakeLabel, TIER_NAME } from "@/lib/format";
-import type { ChallengeSummary, SkillBand } from "@/lib/types";
 
-const BAND_STYLE: Record<SkillBand["band"], string> = {
-  ready: "border-line text-muted",
-  learning: "border-wrong/40 text-wrong",
-  almost: "border-accent/50 text-accent",
-  mastered: "border-pass/50 text-pass",
-};
+type TypeFilter = "all" | "build" | "debug";
 
 export default function HomePage() {
   return (
-    <AppShell>
+    <AppShell wide>
       <Home />
     </AppShell>
   );
 }
 
 function Home() {
+  const router = useRouter();
   const me = useQuery({ queryKey: ["me"], queryFn: api.me });
   const missions = useQuery({ queryKey: ["challenges"], queryFn: api.challenges });
+  const [concept, setConcept] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState<TypeFilter>("all");
 
-  if (me.isPending || missions.isPending) return <p className="text-muted">Loading your quest…</p>;
-  if (me.isError || missions.isError) {
-    const err = me.error ?? missions.error;
+  const rows: MissionRow[] = useMemo(
+    () => (missions.data ?? []).map((m, i) => ({ ...m, number: i + 1 })),
+    [missions.data],
+  );
+  const concepts = useMemo(() => [...new Set(rows.flatMap((m) => m.concepts))].sort(), [rows]);
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter(
+      (m) =>
+        (concept === null || m.concepts.includes(concept)) &&
+        (type === "all" || m.type === type) &&
+        (!q || m.title.toLowerCase().includes(q) || String(m.number) === q),
+    );
+  }, [rows, concept, type, query]);
+  const recommended = useMemo(() => new Set(me.data?.next_up.map((n) => n.challenge_id)), [me.data]);
+
+  const error = me.error ?? missions.error;
+  if (error) {
     return (
-      <p role="alert" className="text-error">
-        {err instanceof ApiError ? err.message : "Could not load your quest."}
-      </p>
+      <ErrorState
+        message={error instanceof ApiError ? error.message : "Could not load your quest."}
+        onRetry={() => {
+          void me.refetch();
+          void missions.refetch();
+        }}
+      />
     );
   }
 
-  const tiers = new Map<number, ChallengeSummary[]>();
-  for (const m of missions.data) tiers.set(m.tier, [...(tiers.get(m.tier) ?? []), m]);
-  const { recurring, beaten, strength } = me.data.mistakes;
+  const solved = rows.filter((m) => m.solved).length;
+  const pickRandom = () => {
+    const unsolved = visible.filter((m) => !m.solved);
+    const pool = unsolved.length ? unsolved : visible;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) router.push(`/m/${pick.id}`);
+  };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <div className="space-y-6">
-        <section aria-labelledby="next-up">
-          <h2 id="next-up" className="mb-3 flex items-center gap-2 text-lg font-semibold">
-            <Sparkles size={18} className="text-accent" aria-hidden /> Next up for {me.data.user.name}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {me.data.next_up.map((item) => (
-              <Link
-                key={item.challenge_id}
-                href={`/m/${item.challenge_id}`}
-                className="rounded-xl border border-line bg-panel p-4 transition hover:border-accent/60"
+    <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+      <QuestSidebar
+        handle={me.data?.user.handle}
+        recurring={me.data?.mistakes.recurring.length ?? 0}
+        debugCount={rows.filter((m) => m.type === "debug").length}
+        debugActive={type === "debug"}
+        onDebug={() => setType((t) => (t === "debug" ? "all" : "debug"))}
+      />
+
+      <section aria-label="Quest map" className="min-w-0 space-y-4">
+        {missions.isPending ? <Skeleton className="h-9 w-full rounded-full" /> : <ConceptPills concepts={concepts} value={concept} onChange={setConcept} />}
+        <div className="h-px bg-line" />
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="relative flex h-9 w-full items-center sm:w-64">
+            <span className="sr-only">Search missions</span>
+            <Search size={16} className="pointer-events-none absolute left-3 text-text-2" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search missions"
+              className="h-full w-full rounded-lc bg-hover pl-9 pr-3 text-sm text-text-1 placeholder:text-text-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-line-strong"
+            />
+          </label>
+          <div role="radiogroup" aria-label="Mission type" className="flex h-9 items-center rounded-full bg-fill-2 p-1">
+            {(["all", "build", "debug"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={type === t}
+                onClick={() => setType(t)}
+                className={cx(
+                  "h-7 rounded-full px-3 text-xs capitalize transition-colors",
+                  type === t ? "bg-fill-4 font-medium text-text-1" : "text-text-2 hover:text-text-1",
+                )}
               >
-                <p className="text-xs text-muted">
-                  Tier {item.tier} {item.type === "debug" && "· Debugging"}
-                </p>
-                <p className="mt-1 font-medium">{item.title}</p>
-                <p className="mt-2 text-xs text-muted">{item.reason}</p>
-              </Link>
+                {t}
+              </button>
             ))}
-            {me.data.next_up.length === 0 && (
-              <p className="text-sm text-muted">You have completed every mission. Impressive!</p>
-            )}
           </div>
-        </section>
+          <div className="ml-auto flex items-center gap-3 text-sm text-text-2">
+            <span className="inline-flex items-center gap-2">
+              <ProgressRing value={solved} total={rows.length} label={`${solved} of ${rows.length} missions solved`} />
+              <span className="tabular-nums">
+                {solved}/{rows.length} Solved
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={pickRandom}
+              disabled={visible.length === 0}
+              className="grid size-8 place-items-center rounded-full text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1 disabled:opacity-40"
+              aria-label="Pick a random unsolved mission"
+              title="Pick one for me"
+            >
+              <Shuffle size={16} aria-hidden />
+            </button>
+          </div>
+        </div>
+        {missions.isPending ? <MissionTableSkeleton /> : <MissionTable rows={visible} recommended={recommended} />}
+      </section>
 
-        <section aria-labelledby="quest-map">
-          <h2 id="quest-map" className="mb-3 text-lg font-semibold">
-            Quest map
-          </h2>
-          <ol className="space-y-3">
-            {[...tiers.entries()].map(([tier, list]) => (
-              <li key={tier} className="rounded-xl border border-line bg-panel p-4">
-                <p className="text-xs text-muted">
-                  Tier {tier} · {TIER_NAME[tier] ?? ""}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {list.map((m) => (
-                    <Link
-                      key={m.id}
-                      href={`/m/${m.id}`}
-                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition hover:bg-panel-2 ${
-                        m.solved ? "border-pass/40" : "border-line"
-                      }`}
-                    >
-                      {m.solved ? (
-                        <CheckCircle2 size={14} className="text-pass" aria-label="Solved" />
-                      ) : m.type === "debug" ? (
-                        <Bug size={14} className="text-wrong" aria-label="Debugging mission" />
-                      ) : null}
-                      {m.title}
-                    </Link>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </div>
-
-      <aside className="space-y-6">
-        <section aria-labelledby="memory" className="rounded-xl border border-line bg-panel p-4">
-          <h2 id="memory" className="flex items-center gap-2 font-semibold">
-            <Brain size={18} className="text-accent" aria-hidden /> Mistake Memory
-          </h2>
-          {recurring.length === 0 && beaten.length === 0 && (
-            <p className="mt-2 text-sm text-muted">No recurring mistakes yet. CodeQuest is watching, kindly.</p>
-          )}
-          {recurring.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {recurring.map((k) => (
-                <li key={k} className="flex items-center justify-between rounded-lg bg-panel-2 px-3 py-2 text-sm">
-                  <span>{mistakeLabel(k)}</span>
-                  <span className="text-xs text-wrong">recurring · strength {strength[k]?.toFixed(1)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {beaten.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {beaten.map((k) => (
-                <li key={k} className="flex items-center gap-2 text-sm text-pass">
-                  <Trophy size={14} aria-hidden /> Beaten: {mistakeLabel(k)}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section aria-labelledby="skills" className="rounded-xl border border-line bg-panel p-4">
-          <h2 id="skills" className="font-semibold">
-            Skills by concept
-          </h2>
-          <ul className="mt-3 space-y-2">
-            {me.data.skills.map((s) => (
-              <li key={s.concept} className="flex items-center justify-between text-sm">
-                <span>{conceptLabel(s.concept)}</span>
-                <span className={`rounded-full border px-2 py-0.5 text-xs capitalize ${BAND_STYLE[s.band]}`}>
-                  {s.band}
-                  {s.verified > 0 ? ` · ${s.verified} verified` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <ConnectExtension />
-      </aside>
+      {me.data ? (
+        <QuestRail me={me.data} />
+      ) : (
+        <div className="space-y-4 lg:col-start-2 xl:col-start-auto">
+          <Skeleton className="h-48 w-full rounded-lc" />
+          <Skeleton className="h-32 w-full rounded-lc" />
+        </div>
+      )}
     </div>
   );
 }

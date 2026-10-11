@@ -262,6 +262,7 @@ function renderProblem() {
   const ready = state.problem && state.problem.kind === "problem" && state.problem.meta;
   document.querySelectorAll("[data-needs-problem]").forEach((b) => (b.disabled = !ready));
   const status = $("problem-status");
+  delete status.dataset.difficulty; // set below once LeetCode's difficulty is known; CSS colours it
   $("problem-title").textContent = "";
   $("problem-tags").replaceChildren();
   if (!state.problem || state.problem.kind === "none") {
@@ -277,6 +278,7 @@ function renderProblem() {
     return;
   }
   status.textContent = state.problem.meta.difficulty || "";
+  if (state.problem.meta.difficulty) status.dataset.difficulty = state.problem.meta.difficulty;
   $("problem-title").textContent = state.problem.meta.title;
   for (const tag of state.problem.meta.tags) {
     const chip = document.createElement("span");

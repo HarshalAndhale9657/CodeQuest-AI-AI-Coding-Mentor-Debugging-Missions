@@ -4,93 +4,117 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>CodeQuest Companion</title>
+    <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
     <header class="top">
-      <h1>Code<span>Quest</span> Companion</h1>
-      <button id="settings-toggle" class="icon" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+      <svg class="mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M17.5 17.5A8 8 0 1 1 20 12" stroke="var(--lc-brand)" stroke-width="2.6" stroke-linecap="round" />
+        <path d="m14.5 14.5 3.5 3.5-3.5 3.5" stroke="var(--lc-text-1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="12" cy="12" r="2.2" fill="var(--lc-brand)" />
+      </svg>
+      <h1>CodeQuest <span>Companion</span></h1>
+      <button id="settings-toggle" class="icon" type="button" aria-expanded="false" aria-controls="settings" aria-label="Settings" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
     </header>
 
-    <section id="settings" class="card" hidden>
-      <label for="api-base">CodeQuest server</label>
-      <input id="api-base" type="url" placeholder="http://localhost:8000" spellcheck="false" />
-      <div class="row">
-        <button id="save-settings" type="button">Save</button>
-        <button id="disconnect" type="button" class="ghost">Disconnect</button>
-      </div>
-      <p id="settings-status" class="muted" role="status"></p>
-    </section>
+    <main class="content">
+      <section id="settings" class="card" hidden>
+        <label for="api-base">CodeQuest server</label>
+        <input id="api-base" type="url" placeholder="http://localhost:8000" spellcheck="false" />
+        <div class="row">
+          <button id="save-settings" type="button">Save</button>
+          <button id="disconnect" type="button" class="ghost">Disconnect</button>
+        </div>
+        <p id="settings-status" class="muted" role="status"></p>
+      </section>
 
-    <section id="pair-view" class="card" hidden>
-      <h2>Connect your CodeQuest account</h2>
-      <p class="muted">In CodeQuest, choose <strong>Connect LeetCode Companion</strong> and type the 6-character code here.</p>
-      <form id="pair-form" class="row">
-        <input id="pair-code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123" aria-label="Pairing code" required />
-        <button id="pair-btn" type="submit">Connect</button>
-      </form>
-      <p id="pair-status" class="muted" role="status"></p>
-    </section>
+      <section id="pair-view" class="card pair" hidden>
+        <h2>Connect your CodeQuest account</h2>
+        <p class="muted">In CodeQuest, open <strong>Settings → LeetCode Companion</strong>, generate a code and type it here.</p>
+        <form id="pair-form">
+          <input id="pair-code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="······" aria-label="Pairing code" required />
+          <button id="pair-btn" type="submit" class="primary">Connect</button>
+        </form>
+        <p id="pair-status" class="muted" role="status"></p>
+      </section>
 
-    <section id="main-view" hidden>
-      <div id="problem" class="card">
-        <p class="muted" id="problem-status" role="status">Open a LeetCode problem to begin.</p>
-        <h2 id="problem-title"></h2>
-        <div id="problem-tags" class="tags"></div>
-      </div>
+      <section id="main-view" hidden>
+        <div id="problem" class="card problem">
+          <p class="muted" id="problem-status" role="status">Open a LeetCode problem to begin.</p>
+          <h2 id="problem-title"></h2>
+          <div id="problem-tags" class="tags"></div>
+        </div>
 
-      <div class="card">
-        <h3>1 · Check my approach</h3>
-        <p class="muted">Describe your plan in a sentence or two. You get a question back, never code.</p>
-        <textarea id="approach-text" rows="3" maxlength="2000" placeholder="e.g. I'll use a hash map to remember what I've seen"></textarea>
-        <button id="approach-btn" type="button" data-needs-problem>Check approach</button>
-        <div id="approach-out" class="out" aria-live="polite"></div>
-      </div>
-
-      <div class="card">
-        <h3>2 · Hint</h3>
-        <p class="muted">Concept hints that get more specific each time. Never the solution.</p>
-        <button id="hint-btn" type="button" data-needs-problem>Show hint 1</button>
-        <ol id="hint-out" class="out hints" aria-live="polite"></ol>
-      </div>
-
-      <div class="card">
-        <h3>3 · Analyze my code</h3>
-        <p class="muted">Reads your Python from the editor and checks it for common mistakes.</p>
-        <button id="analyze-btn" type="button" data-needs-problem>Analyze my code</button>
-        <div id="analyze-out" class="out" aria-live="polite"></div>
-      </div>
-
-      <div class="card">
-        <h3>4 · Your LeetCode submissions</h3>
-        <label class="switch">
-          <input id="auto-log" type="checkbox" />
-          <span>Auto-log my submissions: when I press Submit on LeetCode, send the result and my Python code to CodeQuest</span>
-        </label>
-        <div id="last-submission" class="out" aria-live="polite"></div>
-        <button id="log-last-btn" type="button" hidden>Log this submission</button>
-        <details class="manual">
-          <summary>Log manually</summary>
-          <div class="row">
-            <select id="verdict" aria-label="LeetCode result">
-              <option value="wrong_answer">Wrong Answer</option>
-              <option value="runtime_error">Runtime Error</option>
-              <option value="time_limit">Time Limit Exceeded</option>
-              <option value="accepted">Accepted</option>
-            </select>
-            <button id="sync-btn" type="button" data-needs-problem>Log attempt</button>
+        <details class="tool" open>
+          <summary><span class="step">1</span> Check my approach</summary>
+          <div class="tool-body">
+            <p class="muted">Describe your plan in a sentence or two. You get a question back, never code.</p>
+            <textarea id="approach-text" rows="3" maxlength="2000" placeholder="e.g. I'll use a hash map to remember what I've seen"></textarea>
+            <button id="approach-btn" type="button" class="primary" data-needs-problem>Check approach</button>
+            <div id="approach-out" class="out" aria-live="polite"></div>
           </div>
         </details>
-        <div id="sync-out" class="out" aria-live="polite"></div>
-      </div>
 
-      <div class="card" id="memory-card">
-        <h3>Your Mistake Memory</h3>
-        <div id="memory-out" class="muted">Loading…</div>
-      </div>
-    </section>
+        <details class="tool" open>
+          <summary><span class="step">2</span> Hint</summary>
+          <div class="tool-body">
+            <p class="muted">Concept hints that get more specific each time. Never the solution.</p>
+            <button id="hint-btn" type="button" class="primary" data-needs-problem>Show hint 1</button>
+            <ol id="hint-out" class="out hints" aria-live="polite"></ol>
+          </div>
+        </details>
 
-    <p id="panel-error" class="error small" role="alert" hidden></p>
+        <details class="tool" open>
+          <summary><span class="step">3</span> Analyze my code</summary>
+          <div class="tool-body">
+            <p class="muted">Reads your Python from the editor and checks it for common mistakes.</p>
+            <button id="analyze-btn" type="button" class="primary" data-needs-problem>Analyze my code</button>
+            <div id="analyze-out" class="out" aria-live="polite"></div>
+          </div>
+        </details>
+
+        <details class="tool" open>
+          <summary><span class="step">4</span> Your LeetCode submissions</summary>
+          <div class="tool-body">
+            <label class="switch">
+              <input id="auto-log" type="checkbox" role="switch" />
+              <span class="track" aria-hidden="true"></span>
+              <span>Auto-log my submissions: when I press Submit on LeetCode, send the result and my Python code to CodeQuest</span>
+            </label>
+            <div id="last-submission" class="out" aria-live="polite"></div>
+            <button id="log-last-btn" type="button" class="primary" hidden>Log this submission</button>
+            <details class="manual">
+              <summary>Log manually</summary>
+              <div class="row">
+                <select id="verdict" aria-label="LeetCode result">
+                  <option value="wrong_answer">Wrong Answer</option>
+                  <option value="runtime_error">Runtime Error</option>
+                  <option value="time_limit">Time Limit Exceeded</option>
+                  <option value="accepted">Accepted</option>
+                </select>
+                <button id="sync-btn" type="button" data-needs-problem>Log attempt</button>
+              </div>
+            </details>
+            <div id="sync-out" class="out" aria-live="polite"></div>
+          </div>
+        </details>
+
+        <details class="tool memory" id="memory-card" open>
+          <summary><span class="step brain" aria-hidden="true">◆</span> Your Mistake Memory</summary>
+          <div class="tool-body">
+            <div id="memory-out" class="muted">Loading…</div>
+          </div>
+        </details>
+      </section>
+
+      <p id="panel-error" class="error small" role="alert" hidden></p>
+    </main>
     <footer class="muted small">Your code leaves the browser only when you press a button or switch on Auto-log. Disabled during contests.</footer>
     <script src="sidepanel.js" type="module"></script>
   </body>

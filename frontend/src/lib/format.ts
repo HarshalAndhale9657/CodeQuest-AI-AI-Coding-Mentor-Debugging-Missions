@@ -36,3 +36,43 @@ export const TIER_NAME: Record<number, string> = {
   4: "Algorithms",
   5: "Recursion",
 };
+
+export type Difficulty = "Easy" | "Medium" | "Hard";
+
+/** LeetCode-style difficulty for a mission tier: 1–2 Easy, 3 Medium, 4–5 Hard. */
+export function difficultyForTier(tier: number): Difficulty {
+  if (tier <= 2) return "Easy";
+  if (tier === 3) return "Medium";
+  return "Hard";
+}
+
+export const DIFFICULTY_CLASS: Record<Difficulty, string> = {
+  Easy: "text-easy",
+  Medium: "text-medium",
+  Hard: "text-hard",
+};
+
+export const VERDICT_TEXT: Record<Verdict, string> = {
+  passed: "text-green",
+  wrong_output: "text-red",
+  runtime_error: "text-medium",
+  timeout: "text-purple",
+};
+
+export const VERDICT_BG: Record<Verdict, string> = {
+  passed: "bg-green",
+  wrong_output: "bg-red",
+  runtime_error: "bg-medium",
+  timeout: "bg-purple",
+};
+
+export function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
+}

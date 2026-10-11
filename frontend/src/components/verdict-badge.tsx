@@ -1,19 +1,20 @@
 import { AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
-import { VERDICT_LABEL } from "@/lib/format";
+import { VERDICT_LABEL, VERDICT_TEXT } from "@/lib/format";
 import type { Verdict } from "@/lib/types";
+import { cx } from "./ui/cx";
 
-const STYLE: Record<Verdict, { icon: typeof CheckCircle2; className: string }> = {
-  passed: { icon: CheckCircle2, className: "text-pass bg-pass/10 border-pass/30" },
-  wrong_output: { icon: XCircle, className: "text-wrong bg-wrong/10 border-wrong/30" },
-  runtime_error: { icon: AlertTriangle, className: "text-error bg-error/10 border-error/30" },
-  timeout: { icon: Clock, className: "text-timeout bg-timeout/10 border-timeout/30" },
+export const VERDICT_ICON: Record<Verdict, typeof CheckCircle2> = {
+  passed: CheckCircle2,
+  wrong_output: XCircle,
+  runtime_error: AlertTriangle,
+  timeout: Clock,
 };
 
 export function VerdictBadge({ verdict }: { verdict: Verdict }) {
-  const { icon: Icon, className } = STYLE[verdict];
+  const Icon = VERDICT_ICON[verdict];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${className}`}>
-      <Icon size={14} aria-hidden />
+    <span className={cx("inline-flex items-center gap-1 rounded-full bg-fill-3 px-2 py-0.5 text-xs font-medium", VERDICT_TEXT[verdict])}>
+      <Icon size={13} aria-hidden />
       {VERDICT_LABEL[verdict]}
     </span>
   );

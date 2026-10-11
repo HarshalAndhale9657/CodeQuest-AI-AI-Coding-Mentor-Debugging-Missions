@@ -139,7 +139,7 @@ export interface SkillBand {
 }
 
 export interface Me {
-  user: { id: string; name: string };
+  user: { id: string; name: string; handle: string };
   skills: SkillBand[];
   mistakes: {
     recurring: string[];
@@ -179,4 +179,58 @@ export interface ArenaResult {
 
 export function isJudgeResult(value: SubmissionView["result"]): value is JudgeResult {
   return !!value && "tests" in value;
+}
+
+export interface AiStatus {
+  enabled: boolean;
+  available: boolean;
+  provider: string | null;
+  budget_left_usd: number;
+  rephrased: number;
+  leaks_blocked: number;
+}
+
+export type ImportPlatform = "codeforces" | "leetcode";
+
+export interface ImportRow {
+  status: "ok" | "stale" | "error" | "queued";
+  handle: string;
+  error: string | null;
+  fetched: number | null;
+  rating?: number | null;
+  max_rating?: number | null;
+  rank?: string | null;
+  solved?: number | { easy: number; medium: number; hard: number; total: number };
+  top_tags?: [string, number][];
+  concepts?: string[];
+}
+
+export interface MistakeTimelineRow {
+  key: string;
+  label: string;
+  first_seen: number | null;
+  last_seen: number | null;
+  times: number;
+  recurring: boolean;
+  beaten: boolean;
+}
+
+export interface Portfolio {
+  handle: string;
+  name: string;
+  verified: {
+    concepts: SkillBand[];
+    all_concepts: SkillBand[];
+    mistakes: MistakeTimelineRow[];
+    stats: {
+      solved: number;
+      missions_total: number;
+      hints_per_solve: number | null;
+      debug_missions: number;
+      attempts: number;
+    };
+    solved: { id: string; title: string; tier: number }[];
+  };
+  imports: Partial<Record<ImportPlatform, ImportRow>>;
+  typing: { best_cpm: number; accuracy: number; runs: number } | null;
 }

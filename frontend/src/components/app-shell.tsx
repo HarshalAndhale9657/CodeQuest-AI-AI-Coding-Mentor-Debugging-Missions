@@ -1,72 +1,62 @@
 "use client";
 
-import { Compass, LogOut, ShieldCheck } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
-import { clearSession, getName, getToken } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
+import { useHydratedSession } from "@/lib/session";
+import { TopBar } from "./top-bar";
+import { cx } from "./ui/cx";
+import { Skeleton } from "./ui/states";
 
-const noop = () => () => {};
-
-function useHydratedSession() {
-  const token = useSyncExternalStore(noop, getToken, () => null);
-  const name = useSyncExternalStore(noop, getName, () => null);
-  const hydrated = useSyncExternalStore(noop, () => true, () => false);
-  return { token, name, hydrated };
+function ShellSkeleton({ workspace }: { workspace?: boolean }) {
+  return (
+    <div className={cx("flex min-h-screen flex-col", workspace ? "bg-bg-ws" : "bg-bg")} aria-busy="true">
+      <div className={cx("h-[50px]", workspace ? "bg-bg-ws" : "border-b border-line bg-layer-1")} />
+      <div className="mx-auto w-full max-w-[1440px] flex-1 space-y-3 p-6">
+        <span className="sr-only">Loading your quest…</span>
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    </div>
+  );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const { token, name, hydrated } = useHydratedSession();
+/** Redirects to the landing page once we know there is no session. */
+function useAuthGuard(required: boolean) {
+  const session = useHydratedSession();
   const router = useRouter();
-  const pathname = usePathname();
-
   useEffect(() => {
-    if (hydrated && !token) router.replace("/");
-  }, [hydrated, token, router]);
+    if (required && session.hydrated && !session.token) router.replace("/");
+  }, [required, session.hydrated, session.token, router]);
+  return session;
+}
 
-  if (!hydrated || !token) {
-    return <div className="grid min-h-screen place-items-center text-muted">Loading your quest…</div>;
-  }
-
-  const link = (href: string, label: string, Icon: typeof Compass) => (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors ${
-        pathname.startsWith(href) ? "bg-panel-2 text-text" : "text-muted hover:text-text"
-      }`}
-    >
-      <Icon size={16} aria-hidden /> {label}
-    </Link>
-  );
-
+/** List-page shell: LeetCode's #282828 top bar over a #1a1a1a page. */
+export function AppShell({ children, requireAuth = true, wide = false }: { children: ReactNode; requireAuth?: boolean; wide?: boolean }) {
+  const { token, name, hydrated } = useAuthGuard(requireAuth);
+  if (!hydrated || (requireAuth && !token)) return <ShellSkeleton />;
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b border-line bg-ink/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
-          <Link href="/home" className="font-semibold tracking-tight">
-            Code<span className="text-accent">Quest</span> AI
-          </Link>
-          <nav className="flex gap-1" aria-label="Main">
-            {link("/home", "Quest", Compass)}
-            {link("/arena", "Sandbox Arena", ShieldCheck)}
-          </nav>
-          <div className="ml-auto flex items-center gap-3 text-sm text-muted">
-            <span>{name}</span>
-            <button
-              type="button"
-              onClick={() => {
-                clearSession();
-                router.replace("/");
-              }}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 hover:text-text"
-              aria-label="Sign out"
-            >
-              <LogOut size={16} aria-hidden />
-            </button>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+    <div className="flex min-h-screen flex-col bg-bg">
+      <TopBar name={token ? name : null} />
+      <main className={cx("mx-auto w-full flex-1 px-4 py-6 sm:px-6", wide ? "max-w-[1600px]" : "max-w-[1440px]")}>{children}</main>
+    </div>
+  );
+}
+
+/** Renders children only once a session exists (workspace pages build their own frame inside). */
+export function WorkspaceGate({ children }: { children: ReactNode }) {
+  const { token, hydrated } = useAuthGuard(true);
+  if (!hydrated || !token) return <ShellSkeleton workspace />;
+  return <>{children}</>;
+}
+
+/** Workspace frame: LeetCode's #0f0f0f problem workspace with a centred action group. Use inside WorkspaceGate. */
+export function WorkspaceFrame({ children, left, center }: { children: ReactNode; left?: ReactNode; center?: ReactNode }) {
+  const { name } = useHydratedSession();
+  return (
+    <div className="flex min-h-screen flex-col bg-bg-ws lg:h-screen lg:overflow-hidden">
+      <TopBar name={name} left={left} center={center} workspace />
+      <main className="flex min-h-0 flex-1 flex-col px-2 pb-2">{children}</main>
     </div>
   );
 }

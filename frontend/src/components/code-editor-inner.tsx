@@ -1,6 +1,6 @@
 "use client";
 
-import Editor, { loader, type OnMount } from "@monaco-editor/react";
+import Editor, { loader, type BeforeMount, type OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEffect, useRef } from "react";
 
@@ -8,7 +8,34 @@ loader.config({ paths: { vs: "/monaco/vs" } });
 
 type Monaco = Parameters<OnMount>[1];
 
+// LeetCode's editor: VS Code Dark+ syntax on the #262626 panel (hex is required here: Monaco cannot read CSS variables).
+const defineTheme: BeforeMount = (monaco) => {
+  monaco.editor.defineTheme("codequest-dark", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [],
+    colors: {
+      "editor.background": "#262626",
+      "editor.lineHighlightBackground": "#2f2f2f",
+      "editor.lineHighlightBorder": "#00000000",
+      "editorLineNumber.foreground": "#858585",
+      "editorLineNumber.activeForeground": "#f5f5f5",
+      "editorGutter.background": "#262626",
+      "editor.selectionBackground": "#264f78",
+      "editorCursor.foreground": "#f5f5f5",
+      "editorIndentGuide.background1": "#3c3c3c",
+      "editorWidget.background": "#303030",
+      "editorWidget.border": "#464646",
+      "editorHoverWidget.background": "#303030",
+      "editorHoverWidget.border": "#464646",
+      "scrollbarSlider.background": "#46464680",
+      "scrollbarSlider.hoverBackground": "#464646",
+    },
+  });
+};
+
 export interface CodeEditorProps {
+  onCursor?: (line: number, column: number) => void;
   path: string;
   defaultValue: string;
   onChange: (value: string) => void;
@@ -26,15 +53,18 @@ export default function CodeEditorInner({
   region,
   crashLine,
   crashMessage,
+  onCursor,
 }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const decorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const submitRef = useRef(onSubmitShortcut);
+  const cursorRef = useRef(onCursor);
 
   useEffect(() => {
     submitRef.current = onSubmitShortcut;
-  }, [onSubmitShortcut]);
+    cursorRef.current = onCursor;
+  }, [onSubmitShortcut, onCursor]);
 
   const handleMount: OnMount = (instance, monaco) => {
     editorRef.current = instance;
@@ -46,6 +76,7 @@ export default function CodeEditorInner({
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => submitRef.current?.(),
     });
+    instance.onDidChangeCursorPosition((e) => cursorRef.current?.(e.position.lineNumber, e.position.column));
   };
 
   useEffect(() => {
@@ -93,12 +124,15 @@ export default function CodeEditorInner({
       path={path}
       defaultLanguage="python"
       defaultValue={defaultValue}
-      theme="vs-dark"
+      theme="codequest-dark"
+      beforeMount={defineTheme}
       onMount={handleMount}
       onChange={(value) => onChange(value ?? "")}
-      loading={<div className="p-4 text-sm text-muted">Loading editor…</div>}
+      loading={<div className="p-4 text-sm text-text-3">Loading editor…</div>}
       options={{
-        fontSize: 15,
+        fontSize: 14,
+        fontFamily: 'Menlo, Monaco, Consolas, "Courier New", monospace',
+        lineHeight: 21,
         minimap: { enabled: false },
         automaticLayout: true,
         scrollBeyondLastLine: false,
@@ -106,6 +140,9 @@ export default function CodeEditorInner({
         insertSpaces: true,
         renderLineHighlight: "line",
         padding: { top: 12 },
+        scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
+        overviewRulerBorder: false,
+        guides: { indentation: true },
       }}
     />
   );

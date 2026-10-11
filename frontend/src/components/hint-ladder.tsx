@@ -1,9 +1,11 @@
 "use client";
 
-import { Lightbulb, Lock } from "lucide-react";
+import { Crosshair, Lightbulb, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { HintEntry, HintGate } from "@/lib/types";
+import { Button } from "./ui/button";
+import { cx } from "./ui/cx";
 
 interface Props {
   ladder: HintEntry[];
@@ -28,57 +30,64 @@ function useCountdown(deadline: number | null): number {
   return deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0;
 }
 
+/** Progressive hints as a vertical stepper: used steps are filled, locked steps show what unlocks them. */
 export function HintLadder({ ladder, maxLevel, next, nextFetchedAt, canAsk, busy, error, onAsk, onFocusRegion }: Props) {
   const deadline = next && !next.available && next.unlocks_in_s ? nextFetchedAt + next.unlocks_in_s * 1000 : null;
   const remaining = useCountdown(deadline);
   const exhausted = ladder.length >= maxLevel;
   const locked = !!next && !next.available && remaining > 0;
+  const upcoming = Array.from({ length: Math.max(0, maxLevel - ladder.length) }, (_, i) => ladder.length + i + 1);
+
   return (
-    <section aria-label="Hints" className="rounded-xl border border-line bg-panel p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <Lightbulb size={16} className="text-wrong" aria-hidden />
-        <h2 className="text-sm font-medium">Hints</h2>
-        <span className="ml-auto text-xs text-muted">
+    <section aria-label="Hints" className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Lightbulb size={18} className="text-medium" aria-hidden />
+        <h2 className="text-base font-semibold text-text-1">Hint ladder</h2>
+        <span className="ml-auto rounded-full bg-fill-3 px-2 py-0.5 text-xs text-text-2">
           {ladder.length}/{maxLevel} used · never the answer
         </span>
       </div>
-      <ol className="space-y-2">
+
+      <ol className="relative space-y-3 before:absolute before:bottom-3 before:left-[11px] before:top-3 before:w-px before:bg-line-strong">
         {ladder.map((h) => (
-          <motion.li
-            key={h.level}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="rounded-lg bg-panel-2 p-2.5 text-sm"
-          >
-            <button type="button" className="w-full text-left" onClick={() => onFocusRegion(h.region)}>
-              <span className="text-xs text-muted">
-                Hint {h.level} · {h.title}
-              </span>
-              <p className="mt-0.5 leading-relaxed">{h.text}</p>
-            </button>
+          <motion.li key={h.level} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="relative flex gap-3">
+            <span className="relative z-10 grid size-6 shrink-0 place-items-center rounded-full bg-medium text-xs font-semibold text-bg">{h.level}</span>
+            <div className="min-w-0 flex-1 rounded-lc bg-fill-2 p-3">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-medium">{h.title}</p>
+                {h.region && (
+                  <button
+                    type="button"
+                    onClick={() => onFocusRegion(h.region)}
+                    className="ml-auto inline-flex items-center gap-1 rounded-lc-sm px-1.5 py-0.5 text-xs text-text-2 transition-colors hover:bg-fill-3 hover:text-text-1"
+                  >
+                    <Crosshair size={12} aria-hidden /> Show lines {h.region[0]}–{h.region[1]}
+                  </button>
+                )}
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-text-1">{h.text}</p>
+            </div>
           </motion.li>
         ))}
+        {upcoming.map((level) => (
+          <li key={level} className="relative flex items-center gap-3">
+            <span className="relative z-10 grid size-6 shrink-0 place-items-center rounded-full bg-fill-3 text-xs text-text-3">{level}</span>
+            <span className={cx("text-sm", level === ladder.length + 1 ? "text-text-2" : "text-text-3")}>
+              {level === ladder.length + 1 ? "Next hint" : "Locked"}
+            </span>
+          </li>
+        ))}
       </ol>
+
       {!exhausted && (
-        <button
-          type="button"
-          onClick={onAsk}
-          disabled={!canAsk || busy || locked}
-          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {locked ? <Lock size={14} aria-hidden /> : <Lightbulb size={14} aria-hidden />}
-          {busy
-            ? "Thinking…"
-            : locked
-              ? `Change your code and resubmit, or wait ${remaining}s`
-              : `Show hint ${ladder.length + 1}`}
-        </button>
+        <Button variant="secondary" className="w-full" onClick={onAsk} disabled={!canAsk || locked} loading={busy}>
+          {locked ? <Lock size={14} aria-hidden /> : <Lightbulb size={14} className="text-medium" aria-hidden />}
+          {busy ? "Thinking…" : locked ? `Change your code and resubmit, or wait ${remaining}s` : `Show hint ${ladder.length + 1}`}
+        </Button>
       )}
-      {!canAsk && !exhausted && (
-        <p className="mt-2 text-xs text-muted">Submit your code first. Hints respond to what you wrote.</p>
-      )}
+      {!canAsk && !exhausted && <p className="text-xs text-text-3">Submit your code first. Hints respond to what you wrote.</p>}
       {error && (
-        <p role="alert" className="mt-2 text-xs text-error">
+        <p role="alert" className="text-xs text-red">
           {error}
         </p>
       )}

@@ -1,9 +1,17 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Check, Copy, Puzzle } from "lucide-react";
+import { Check, Copy, Puzzle, RotateCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+
+const STEPS = [
+  "Install the CodeQuest Companion extension and open any LeetCode problem.",
+  "Click the CodeQuest icon to open the side panel.",
+  "Type this code into the panel. It works once and expires in 10 minutes.",
+];
 
 /** Shows a single-use pairing code for the CodeQuest Companion browser extension. */
 export function ConnectExtension() {
@@ -11,7 +19,10 @@ export function ConnectExtension() {
   const [now, setNow] = useState(() => Date.now());
   const pairing = useMutation({
     mutationFn: async () => ({ ...(await api.extensionPairingCode()), issuedAt: Date.now() }),
-    onSuccess: () => setCopied(false),
+    onSuccess: () => {
+      setCopied(false);
+      setNow(Date.now());
+    },
   });
 
   const expiresAt = pairing.data ? pairing.data.issuedAt + pairing.data.expires_in_s * 1000 : null;
@@ -34,45 +45,69 @@ export function ConnectExtension() {
   }
 
   return (
-    <section aria-labelledby="connect-ext" className="rounded-xl border border-line bg-panel p-4">
-      <h2 id="connect-ext" className="flex items-center gap-2 font-semibold">
-        <Puzzle size={18} className="text-accent" aria-hidden /> LeetCode Companion
-      </h2>
-      <p className="mt-1 text-sm text-muted">
-        Take your mentor to LeetCode: approach checks, concept hints and mistake detection, all feeding this Mistake Memory.
-      </p>
-      {pairing.data && !expired ? (
-        <div className="mt-3 flex items-center gap-3">
-          <code className="rounded-lg bg-panel-2 px-3 py-1.5 font-mono text-lg tracking-[0.3em]" aria-label="Pairing code">
-            {pairing.data.code}
-          </code>
-          <button
-            type="button"
-            onClick={() => copy(pairing.data.code)}
-            className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs text-muted transition hover:text-text"
-          >
-            {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />} {copied ? "Copied" : "Copy"}
-          </button>
-          <span className="text-xs text-muted" aria-live="polite">
-            expires in {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
-          </span>
+    <Card id="extension" aria-labelledby="connect-ext" className="scroll-mt-20 p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lc bg-green/15">
+          <Puzzle size={20} className="text-green" aria-hidden />
+        </span>
+        <div>
+          <h2 id="connect-ext" className="text-base font-semibold text-text-1">
+            LeetCode Companion
+          </h2>
+          <p className="mt-0.5 text-sm text-text-2">
+            Take your mentor to LeetCode: approach checks, concept hints and mistake detection, all feeding your Mistake Memory.
+          </p>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => pairing.mutate()}
-          disabled={pairing.isPending}
-          className="mt-3 rounded-lg border border-line px-3 py-1.5 text-sm transition hover:bg-panel-2 disabled:opacity-50"
-        >
-          {pairing.isPending ? "Creating code…" : expired ? "Code expired: get a new one" : "Connect the extension"}
-        </button>
-      )}
-      {pairing.isError && (
-        <p role="alert" className="mt-2 text-xs text-error">
-          {pairing.error instanceof ApiError ? pairing.error.message : "Could not create a pairing code."}
-        </p>
-      )}
-      <p className="mt-2 text-xs text-muted">Type the code into the extension&apos;s side panel. It works once and expires in 10 minutes.</p>
-    </section>
+      </div>
+
+      <ol className="mt-5 space-y-2">
+        {STEPS.map((step, i) => (
+          <li key={step} className="flex gap-3 text-sm text-text-2">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-fill-3 text-xs text-text-1">{i + 1}</span>
+            {step}
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-5 rounded-lc bg-panel p-4">
+        {pairing.data && !expired ? (
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex gap-1.5" role="group" aria-label={`Pairing code ${pairing.data.code.split("").join(" ")}`}>
+              {pairing.data.code.split("").map((ch, i) => (
+                <span
+                  key={i}
+                  aria-hidden
+                  className="grid h-12 w-10 place-items-center rounded-lc-sm bg-fill-2 font-mono text-2xl font-semibold text-text-1 ring-1 ring-line-strong"
+                >
+                  {ch}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Button size="sm" onClick={() => copy(pairing.data.code)}>
+                {copied ? <Check size={14} className="text-green" aria-hidden /> : <Copy size={14} aria-hidden />}
+                {copied ? "Copied" : "Copy code"}
+              </Button>
+              <span className="text-xs tabular-nums text-text-3" aria-live="polite">
+                Expires in {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="primary" onClick={() => pairing.mutate()} loading={pairing.isPending}>
+              {expired ? <RotateCw size={16} aria-hidden /> : <Puzzle size={16} aria-hidden />}
+              {pairing.isPending ? "Creating code…" : expired ? "Code expired: get a new one" : "Generate pairing code"}
+            </Button>
+            <span className="text-xs text-text-3">Codes are single-use and never shown again.</span>
+          </div>
+        )}
+        {pairing.isError && (
+          <p role="alert" className="mt-3 text-xs text-red">
+            {pairing.error instanceof ApiError ? pairing.error.message : "Could not create a pairing code."}
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }
