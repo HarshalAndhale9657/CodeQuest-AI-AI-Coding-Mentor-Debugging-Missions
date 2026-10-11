@@ -70,9 +70,9 @@ Pick one:
 
 | Option | Steps |
 |---|---|
+| **`extension.zip`** (recommended for users) | Download [`extension.zip`](https://github.com/HarshalAndhale9657/CodeQuest-AI-AI-Coding-Mentor-Debugging-Missions/raw/main/extension.zip) from the repository root and unzip it to a folder you will keep (Chrome loads it from that folder every time it starts). It contains only the extension, about 250 KB |
 | **Clone the repo** (recommended for developers) | `git clone https://github.com/HarshalAndhale9657/CodeQuest-AI-AI-Coding-Mentor-Debugging-Missions.git` |
-| **Download ZIP** (no Git needed) | On the GitHub page click **Code → Download ZIP**, then unzip it. The extension is the `extension/` folder inside |
-| **Release ZIP** (when a release is published) | Download `codequest-companion-<version>.zip` from the repository's **Releases** page and unzip it to a folder you will keep (Chrome loads it from that folder every time it starts) |
+| **Download the whole repo** (no Git needed) | On the GitHub page click **Code → Download ZIP**, then unzip it. The extension is the `extension/` folder inside |
 
 ### 3.2 Load it into the browser
 
@@ -90,6 +90,9 @@ Pick one:
 3. Click **Load unpacked** and choose the `extension/` folder.
 4. Pin the extension from the extensions menu.
 
+> [!IMPORTANT]
+> Select the folder that has `manifest.json` **directly inside it**. Windows' *Extract All* on `extension.zip` often creates `extension\extension\manifest.json`; pick the inner `extension` folder. Choosing the outer one gives *Manifest file is missing or unreadable*.
+
 Click the CodeQuest icon at any time to open the side panel. It stays open while you move between LeetCode problems and follows the active tab.
 
 ### 3.3 Start the CodeQuest server
@@ -106,7 +109,7 @@ The panel talks to the deployed API (`https://codequest-api-31eg.onrender.com`) 
 
 ### 3.4 Updating
 
-After pulling new code (or unzipping a newer release over the same folder):
+After pulling new code (or unzipping a newer `extension.zip` over the same folder):
 
 1. Open `chrome://extensions` and press the **reload** (↻) button on the CodeQuest card.
 2. Reload any LeetCode tabs that were already open, so the new content scripts are injected.
@@ -361,6 +364,8 @@ The default is the deployed API, `https://codequest-api-31eg.onrender.com`. It's
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| *Manifest file is missing or unreadable* on **Load unpacked** | The selected folder is the outer folder created by unzipping, not the one holding `manifest.json` | Select the inner `extension` folder that has `manifest.json` directly inside it |
+| The extension shows an error or vanishes from `chrome://extensions` | Its unpacked folder was moved or deleted | Unzip `extension.zip` again into a folder you keep, then **Load unpacked** |
 | "Can't reach the CodeQuest server at http://localhost:8000" | API not running, or a different port | Start `uvicorn codequest.api:app --port 8000`, or set the right URL in panel Settings |
 | "Request failed (404)" when pairing | The server URL is the CodeQuest **website** (e.g. `https://codequest-ai-blond.vercel.app`), which has no `/api` routes | Set the server to the API origin in panel Settings (default: `https://codequest-api-31eg.onrender.com`) |
 | "That pairing code is invalid or has expired" | Code older than 10 minutes, or already used | Generate a new code in web **Settings** |
@@ -413,7 +418,19 @@ cd extension && zip -r ../codequest-companion-0.3.0.zip . -x '.*' && cd ..
 Compress-Archive -Path extension\* -DestinationPath codequest-companion-0.3.0.zip -Force
 ```
 
-Attach the ZIP to a GitHub release so users can follow the *Release ZIP* route in [§3.1](#31-get-the-files).
+For the Chrome Web Store, upload this ZIP (manifest at the root).
+
+### Refresh `extension.zip`
+
+The `extension.zip` linked from the README is committed at the repository root and holds the `extension/` folder itself, so users unzip it and load that folder. **Rebuild it whenever `extension/` changes**, or downloads will be out of date:
+
+```bash
+# after committing the change under extension/
+git archive --format=zip -o extension.zip HEAD extension
+git add extension.zip && git commit -m "chore(extension): refresh extension.zip"
+```
+
+`git archive` packages only committed files with forward-slash paths, so the ZIP opens the same way on Windows, macOS and Linux.
 
 ### Chrome Web Store checklist
 

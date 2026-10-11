@@ -41,7 +41,7 @@ The same mentor follows the learner to **LeetCode** through the **CodeQuest Comp
 |---|---|
 | **Web app** | **https://codequest-ai-blond.vercel.app**: click **Try the demo as Priya**, or **Start my own quest** |
 | **API** | https://codequest-api-31eg.onrender.com/api/health · interactive docs at [`/docs`](https://codequest-api-31eg.onrender.com/docs) |
-| **Companion** | Load [`extension/`](extension/) unpacked ([four steps](#the-leetcode-companion)). It talks to the hosted API by default |
+| **Companion** | Download **[`extension.zip`](https://github.com/HarshalAndhale9657/CodeQuest-AI-AI-Coding-Mentor-Debugging-Missions/raw/main/extension.zip)**, load it unpacked in Chrome and pair it with a code ([three steps](#install-the-companion)). It talks to the hosted API by default |
 
 > [!NOTE]
 > **The hosted API runs on a free Render instance.** After about 15 idle minutes it sleeps, so the first request can take up to a minute while it wakes up. Render can't start Docker containers, so the hosted judge uses the restricted local runner: audit-hook tripwire, resource limits and a scrubbed environment. `/api/health` reports this honestly as `"sandboxed": false`. All 8 Arena attacks are still contained there, but the full OS-level sandbox needs Docker. Run it locally ([Quick start](#quick-start)) or on a VM ([deployment guide](docs/DEPLOYMENT.md)) to see `"runner": "docker"`.
@@ -150,14 +150,15 @@ Design and research evidence: [MENTOR_ENGINE.md §10](docs/MENTOR_ENGINE.md#10-l
 </td>
 <td width="45%" valign="top">
 
-**Install in four steps**
+**Get it in about two minutes**
 
-1. Get the code: `git clone` this repo, or **Code → Download ZIP** and unzip.
-2. Open `chrome://extensions` (or `edge://extensions`) and switch on **Developer mode**.
-3. Click **Load unpacked** and pick the [`extension/`](extension/) folder.
-4. In the [CodeQuest web app](https://codequest-ai-blond.vercel.app), open **Settings → LeetCode Companion**, click **Generate pairing code**, then type the 6-character code into the panel.
+⬇️ **[Download `extension.zip`](https://github.com/HarshalAndhale9657/CodeQuest-AI-AI-Coding-Mentor-Debugging-Missions/raw/main/extension.zip)** (≈ 250 KB, Chrome 116+ or Edge)
 
-Open any `leetcode.com/problems/...` page and click the CodeQuest icon. The panel uses the hosted API by default; for a local server, enter `http://localhost:8000` in the panel's **Settings**.
+1. **Unzip** it to a folder you'll keep.
+2. **Load** it: `chrome://extensions` → **Developer mode** → **Load unpacked**.
+3. **Connect** it: web app **Settings → LeetCode Companion** → **Generate pairing code** → type the code into the panel.
+
+👉 **[Step-by-step install and connect guide](#install-the-companion)**
 
 📘 **[Full Companion guide](docs/EXTENSION.md)**: features, architecture, permissions, privacy, troubleshooting, testing and publishing.
 
@@ -173,6 +174,62 @@ flowchart LR
     SW -- "POST /api/ext/sync" --> API
     API --> MM[("Same Mistake Memory<br/>as the web app")]
 ```
+
+### Install the Companion
+
+The Companion is not on the Chrome Web Store yet, so you install it from the ZIP in this repository. It works in **Google Chrome 116+** and **Microsoft Edge**, and talks to the hosted CodeQuest API out of the box, so you don't need to run a server.
+
+#### Step 1: Download and unzip
+
+1. Download **[`extension.zip`](https://github.com/HarshalAndhale9657/CodeQuest-AI-AI-Coding-Mentor-Debugging-Missions/raw/main/extension.zip)**. You can also open [`extension.zip`](extension.zip) on GitHub and click **Download raw file** (the ⬇ icon).
+2. Unzip it into a folder you will **keep**, for example `Documents/CodeQuest/`. Chrome loads the extension from this folder every time it starts, so don't delete or move the folder after installing.
+   - **Windows:** right-click the ZIP → **Extract All…** → **Extract**.
+   - **macOS:** double-click the ZIP.
+   - **Linux:** `unzip extension.zip -d ~/CodeQuest`
+3. Find the folder that has **`manifest.json` directly inside it**: that is the `extension` folder. Windows' *Extract All* often adds an extra level (`extension\extension\manifest.json`). If so, use the inner folder.
+
+#### Step 2: Load it into Chrome
+
+1. Open a new tab and go to **`chrome://extensions`** (Edge: **`edge://extensions`**).
+2. Switch on **Developer mode** (top-right toggle in Chrome; left sidebar in Edge).
+3. Click **Load unpacked** and select the folder from step 1.3, the one that contains `manifest.json`.
+4. The **CodeQuest Companion for LeetCode** card appears. Click the 🧩 puzzle icon in the toolbar and **pin** CodeQuest so its icon is always visible.
+
+#### Step 3: Connect it to the website with a pairing code
+
+The extension never sees your website login. You link it to your CodeQuest account once, with a single-use 6-character code:
+
+1. Open the **[CodeQuest web app](https://codequest-ai-blond.vercel.app)** and click **Try the demo as Priya** or **Start my own quest**. Pairing needs a CodeQuest account.
+2. Go to **[Settings → LeetCode Companion](https://codequest-ai-blond.vercel.app/settings#extension)** and click **Generate pairing code**. A code such as `K7PX2M` appears with a 10-minute countdown. Click **Copy code**.
+3. Open any LeetCode problem, for example [Two Sum](https://leetcode.com/problems/two-sum/), and click the **CodeQuest** icon in the toolbar. The side panel opens on **Connect your CodeQuest account**.
+4. Paste or type the code and click **Connect**. The panel switches to the tutor chat with the problem already loaded. You're done.
+
+How the connection behaves:
+
+- A code works **once** and expires after **10 minutes**. If it expires, click **Code expired: get a new one**.
+- The extension's token lasts **7 days**. After that, the panel asks you to pair again with a new code.
+- To unlink, open the panel's **Settings** (gear icon) and click **Disconnect**.
+- If you run your own server, set the panel's **Settings → CodeQuest server** to that server's **API** address (local: `http://localhost:8000`) **before** you pair. Codes only work on the server that issued them.
+
+> [!TIP]
+> The hosted API sleeps after about 15 idle minutes, so the first **Connect** or message can take up to a minute while it wakes up.
+
+#### Updating
+
+Download the new `extension.zip` and unzip it over the same folder. Then click **↻ Reload** on the CodeQuest card in `chrome://extensions` and reload any open LeetCode tabs.
+
+#### If something goes wrong
+
+| What you see | Fix |
+|---|---|
+| *Manifest file is missing or unreadable* when loading | You selected the outer folder. Select the folder that has `manifest.json` directly inside it |
+| *That pairing code is invalid or has expired* | Each code works once, for 10 minutes. Generate a new one in **Settings → LeetCode Companion** |
+| *Request failed (404)* when connecting | The panel's server is set to the **website**. In the panel's **Settings**, use the API: `https://codequest-api-31eg.onrender.com` |
+| *Can't reach the CodeQuest server* | The hosted API may be waking up; wait a minute and try again. For a local server, check that it's running on port 8000 |
+| *Open a LeetCode problem to begin* | Switch to a `leetcode.com/problems/...` tab. Reload tabs that were already open before you installed the extension |
+| The extension shows an error or disappears after a cleanup | Its folder was moved or deleted. Unzip again and repeat **Load unpacked** |
+
+More fixes: [Companion troubleshooting](docs/EXTENSION.md#11-troubleshooting).
 
 ---
 
@@ -273,7 +330,7 @@ npm install                              # also self-hosts Monaco under public/m
 npm run dev
 ```
 
-**4. Load the Companion**: see [the four steps above](#the-leetcode-companion), then set the panel's server to `http://localhost:8000`.
+**4. Load the Companion**: follow [Install the Companion](#install-the-companion), but in step 2 select the `extension/` folder of your clone. Before pairing, set the panel's **Settings → CodeQuest server** to `http://localhost:8000`, and generate the code from your local web app (http://localhost:3000/settings).
 
 Open http://localhost:3000 and click **Try the demo as Priya**, or start your own quest. Confirm the sandbox with `curl http://localhost:8000/api/health` → `"runner": "docker", "sandboxed": true`.
 
