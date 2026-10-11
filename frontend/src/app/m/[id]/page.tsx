@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowRight,
   Bug,
   CheckCircle2,
   ChevronLeft,
@@ -107,8 +108,11 @@ type EditorStatusStore = ReturnType<typeof createEditorStatus>;
 function EditorStatusBar({ store }: { store: EditorStatusStore }) {
   const { line, col, saving } = useSyncExternalStore(store.subscribe, store.get, store.get);
   return (
-    <div className="flex h-7 shrink-0 items-center gap-3 px-3 text-xs text-text-3">
-      <span>{saving ? "Saving…" : "Saved"}</span>
+    <div className="flex h-8 shrink-0 items-center gap-3 border-t border-line px-3 text-xs text-text-3">
+      <span className="inline-flex items-center gap-1.5">
+        <span className={cx("size-1.5 rounded-full", saving ? "bg-medium" : "bg-green")} aria-hidden />
+        {saving ? "Saving…" : "Saved"}
+      </span>
       <span className="hidden sm:inline">
         <Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit
       </span>
@@ -152,7 +156,7 @@ function Breadcrumb({ list, id }: { list: ChallengeSummary[] | undefined; id: st
   return (
     <div className="hidden items-center gap-1 sm:flex">
       <span className="mx-1 h-4 w-px bg-line-strong" aria-hidden />
-      <Link href="/home" className="flex h-8 items-center gap-2 rounded-lc-sm px-2 text-[15px] font-medium text-text-1 transition-colors hover:bg-fill-2">
+      <Link href="/home" className="flex h-8 items-center gap-2 rounded-lc-sm px-2 text-[14.5px] font-semibold text-text-1 transition-colors hover:bg-fill-2">
         <List size={18} aria-hidden /> Quest
       </Link>
       {arrow(prev, "Previous mission", <ChevronLeft size={18} />)}
@@ -379,12 +383,12 @@ function Workspace({
   const busy = judging || submit.isPending;
 
   const actions = (
-    <div className="flex items-center overflow-hidden rounded-lc bg-btn-dark">
+    <div className="flex items-center overflow-hidden rounded-lc-sm bg-fill-2 ring-1 ring-inset ring-white/[0.05]">
       <button
         type="button"
         onClick={() => (canHint ? hint.mutate() : setLeftTab("hints"))}
         disabled={hint.isPending}
-        className="flex h-8 items-center gap-1.5 px-3 text-sm text-text-2 transition-colors hover:bg-hover hover:text-text-1 disabled:opacity-50"
+        className="flex h-9 items-center gap-1.5 px-3.5 text-sm text-text-2 transition-colors hover:bg-fill-3 hover:text-text-1 disabled:opacity-50"
         title={canHint ? "Get the next hint" : "Open the hint ladder"}
       >
         <Lightbulb size={16} className="text-medium" aria-hidden />
@@ -396,7 +400,7 @@ function Workspace({
         onClick={doSubmit}
         disabled={busy}
         title="Submit to the judge (Ctrl+Enter)"
-        className="flex h-8 items-center gap-1.5 px-3 text-sm font-medium text-green-submit transition-colors hover:bg-hover disabled:opacity-60"
+        className="flex h-9 items-center gap-1.5 px-3.5 text-sm font-semibold text-green-submit transition-colors hover:bg-fill-3 disabled:opacity-60"
       >
         <CloudUpload size={16} className={busy ? "animate-pulse" : ""} aria-hidden />
         {busy ? "Judging…" : "Submit"}
@@ -405,9 +409,9 @@ function Workspace({
   );
 
   const description = (
-    <div className="space-y-5 p-5">
+    <div className="space-y-5 p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-1">
+        <h1 className="font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-text-1">
           {number ? `${number}. ` : ""}
           {challenge.title}
         </h1>
@@ -432,20 +436,20 @@ function Workspace({
       </div>
       <MissionDescription text={challenge.description} />
       {challenge.max_changed_lines && (
-        <p className="rounded-lc bg-medium/10 px-3 py-2 text-sm text-medium">
+        <p className="rounded-lc-sm bg-medium/10 px-3.5 py-2.5 text-sm text-medium ring-1 ring-inset ring-medium/20">
           Fix it by changing at most {challenge.max_changed_lines} lines.
         </p>
       )}
       {challenge.forbidden_calls.length > 0 && (
-        <p className="flex items-center gap-2 rounded-lc bg-medium/10 px-3 py-2 text-sm text-medium">
+        <p className="flex items-center gap-2 rounded-lc-sm bg-medium/10 px-3.5 py-2.5 text-sm text-medium ring-1 ring-inset ring-medium/20">
           <Scale size={15} aria-hidden /> Mission rule: don&apos;t use{" "}
           {challenge.forbidden_calls.map((c) => `${c.startsWith(".") ? c.slice(1) : c}()`).join(", ")}.
         </p>
       )}
       {challenge.visible_tests.map((t, i) => (
         <div key={t.id} className="space-y-2">
-          <p className="font-semibold text-text-1">Example {i + 1}:</p>
-          <div className="border-l-2 border-line-strong pl-4 font-mono text-[13px] leading-6">
+          <p className="font-display text-[15px] font-semibold text-text-1">Example {i + 1}</p>
+          <div className="rounded-r-lc-sm border-l-2 border-line-strong bg-white/[0.02] py-2 pl-4 pr-3 font-mono text-[13px] leading-6">
             <p className="break-all">
               <span className="font-sans font-semibold text-text-1">Input: </span>
               <span className="text-text-2">
@@ -464,7 +468,7 @@ function Workspace({
       </p>
       {challenge.edge_cases.length > 0 && (
         <div>
-          <p className="mb-2 font-semibold text-text-1">Things to consider:</p>
+          <p className="mb-2 font-display text-[15px] font-semibold text-text-1">Things to consider</p>
           <ul className="list-disc space-y-1 pl-5 text-sm text-text-2 marker:text-text-3">
             {challenge.edge_cases.map((e) => (
               <li key={e}>{e}</li>
@@ -592,23 +596,25 @@ function Workspace({
     }
     if (!result) {
       return (
-        <p className="grid h-full min-h-32 place-items-center text-center text-sm text-text-3">
-          You must submit your code first.
-        </p>
+        <div className="grid h-full min-h-32 place-items-center text-center">
+          <p className="max-w-xs text-sm leading-relaxed text-text-3">
+            Submit your code to see how it does on every test, hidden ones included. <Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> works too.
+          </p>
+        </div>
       );
     }
     return (
       <div className="space-y-4">
         {solved && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lc bg-green/10 px-3 py-2 text-sm text-text-1">
+          <div className="flex flex-wrap items-center gap-2 rounded-lc-sm bg-green/10 px-3.5 py-2.5 text-sm text-text-1 ring-1 ring-inset ring-green/25">
             <CheckCircle2 size={18} className="text-green" aria-hidden />
             Mission complete! Every test passed, including the hidden ones.
             <span className="ml-auto flex items-center gap-3">
               <button type="button" onClick={() => setBottomTab("journey")} className="font-medium text-text-2 hover:text-text-1 hover:underline">
                 Replay your journey
               </button>
-              <Link href="/home" className="font-medium text-green hover:underline">
-                Next mission →
+              <Link href="/home" className="inline-flex items-center gap-1 font-semibold text-green hover:underline">
+                Next mission <ArrowRight size={14} aria-hidden />
               </Link>
             </span>
           </div>
@@ -727,7 +733,7 @@ function TestcaseView({ challenge }: { challenge: ChallengeDetail }) {
             aria-selected={i === selected}
             onClick={() => setSelected(i)}
             className={cx(
-              "h-8 rounded-lc px-3 text-sm transition-colors",
+              "h-8 rounded-lc-sm px-3 text-sm transition-colors",
               i === selected ? "bg-fill-3 text-text-1" : "text-text-2 hover:bg-fill-2",
             )}
           >

@@ -22,7 +22,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { cx } from "@/components/ui/cx";
 import { ProgressRing } from "@/components/ui/progress-ring";
@@ -55,7 +55,7 @@ function RoadmapView() {
             title="Your roadmap starts with four questions"
             text="Tell CodeQuest your goal, your time and your level. It builds a week-by-week plan from that and from your real mistakes."
             action={
-              <Link href="/onboarding" className="mt-2 inline-flex h-10 items-center gap-2 rounded-lc-sm bg-brand px-4 text-sm font-medium text-bg hover:brightness-110">
+              <Link href="/onboarding" className={buttonClass("primary", "md", "mt-3")}>
                 <Sparkles size={16} aria-hidden /> Build my roadmap
               </Link>
             }
@@ -67,7 +67,7 @@ function RoadmapView() {
   }
   if (!roadmap.data) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" aria-busy="true">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" aria-busy="true">
         <div className="space-y-4">
           <Skeleton className="h-40 rounded-lc" />
           <Skeleton className="h-72 rounded-lc" />
@@ -87,7 +87,7 @@ function Plan({ plan }: { plan: Roadmap }) {
   });
   const labels = useMemo(() => Object.fromEntries(plan.topics.map((t) => [t.id, t.label])), [plan.topics]);
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-4">
         <Header plan={plan} onReplan={() => replan.mutate()} replanning={replan.isPending} />
         {replan.isError && (
@@ -130,8 +130,8 @@ function Header({ plan, onReplan, replanning }: { plan: Roadmap; onReplan: () =>
           <span className="absolute text-sm font-semibold tabular-nums text-text-1">{pct}%</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-brand">Your roadmap · v{plan.version}</p>
-          <h1 className="mt-0.5 text-xl font-semibold text-text-1">{plan.goal_label}</h1>
+          <p className="text-[13px] font-medium text-brand">Your roadmap, version {plan.version}</p>
+          <h1 className="mt-0.5 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-text-1">{plan.goal_label}</h1>
           <div className="mt-2 flex flex-wrap gap-2">
             <Tag icon={<Clock size={12} aria-hidden />}>{profile.hours_per_week} h/week</Tag>
             <Tag icon={<Target size={12} aria-hidden />}>{profile.deadline_weeks ? `${profile.deadline_weeks}-week deadline` : "No deadline"}</Tag>
@@ -142,7 +142,7 @@ function Header({ plan, onReplan, replanning }: { plan: Roadmap; onReplan: () =>
           </div>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
-          <Link href="/onboarding" className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lc-sm bg-fill-3 px-3 text-sm text-text-1 hover:bg-tile sm:flex-none">
+          <Link href="/onboarding" className={buttonClass("secondary", "sm", "flex-1 sm:flex-none")}>
             <Settings2 size={14} aria-hidden /> Edit goals
           </Link>
           <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" onClick={onReplan} loading={replanning}>
@@ -199,7 +199,7 @@ function WeekCard({ week, current, labels }: { week: RoadmapWeek; current: boole
           {complete ? <Check size={16} strokeWidth={3} aria-label="Week complete" /> : week.week}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-x-2 text-sm font-medium text-text-1">
+          <span className="flex flex-wrap items-center gap-x-2 font-display text-[15px] font-semibold text-text-1">
             Week {week.week}
             {current && <span className="rounded-full bg-brand/15 px-2 text-[11px] font-medium text-brand">This week</span>}
           </span>
@@ -346,9 +346,9 @@ function withItemDone(plan: Roadmap, itemId: string, done: boolean): Roadmap {
 function CoachCard({ plan }: { plan: Roadmap }) {
   const ai = plan.coach.source === "ai";
   return (
-    <section aria-labelledby="coach-title" className="overflow-hidden rounded-lc bg-layer-1">
-      <div className="bg-linear-to-br from-brand-bg-2 to-brand-bg p-4">
-        <h2 id="coach-title" className="flex items-center gap-2 text-sm font-semibold text-brand">
+    <section aria-labelledby="coach-title" className="cq-lamp overflow-hidden rounded-lc">
+      <div className="p-5">
+        <h2 id="coach-title" className="flex items-center gap-2 font-display text-[16px] font-semibold text-brand">
           <Sparkles size={16} aria-hidden /> Coach notes
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-text-1">{plan.coach.summary}</p>
@@ -384,8 +384,8 @@ function SkillPath({ topics }: { topics: RoadmapTopic[] }) {
       <CardTitle id="path-title" icon={<MapIcon size={18} className="text-blue" aria-hidden />}>
         Skill path
       </CardTitle>
-      <p className="px-4 pt-1 text-xs text-text-3">Every topic in prerequisite order, and why it is or isn&apos;t in your plan.</p>
-      <ol className="mt-3 space-y-0.5 px-2">
+      <p className="px-5 pt-1 text-xs text-text-3">Every topic in prerequisite order, and why it is or isn&apos;t in your plan.</p>
+      <ol className="mt-3 space-y-0.5 px-3">
         {topics.map((t, i) => (
           <li key={t.id} className="flex items-start gap-3 rounded-lc-sm px-2 py-1.5" title={t.reason}>
             <span className="flex flex-col items-center pt-1.5" aria-hidden>

@@ -18,7 +18,7 @@ interface Props<T extends string> {
   idPrefix: string;
 }
 
-/** LeetCode panel tabs, separated by thin dividers. Arrow/Home/End keys move focus (roving tabindex). */
+/** Panel tabs as quiet pills; the active one is lifted. Arrow/Home/End keys move focus (roving tabindex). */
 export function Tabs<T extends string>({ tabs, value, onChange, label, idPrefix }: Props<T>) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -35,12 +35,11 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, idPrefix 
   }
 
   return (
-    <div role="tablist" aria-label={label} className="flex min-w-0 items-center overflow-x-auto">
+    <div role="tablist" aria-label={label} className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]">
       {tabs.map((tab, i) => {
         const active = tab.id === value;
         return (
           <div key={tab.id} className="flex shrink-0 items-center">
-            {i > 0 && <span className="mx-1 h-4 w-px bg-line-strong" aria-hidden />}
             <button
               ref={(el) => {
                 refs.current[i] = el;
@@ -54,8 +53,8 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, idPrefix 
               onClick={() => onChange(tab.id)}
               onKeyDown={(e) => onKey(e, i)}
               className={cx(
-                "inline-flex h-7 items-center gap-1.5 rounded-lc-sm px-2 text-sm transition-colors",
-                active ? "font-medium text-text-1" : "text-text-2 hover:bg-fill-3 hover:text-text-1",
+                "inline-flex h-7 items-center gap-1.5 rounded-lc-sm px-2.5 text-[13px] transition-colors",
+                active ? "bg-white/[0.07] font-semibold text-text-1" : "text-text-2 hover:bg-white/[0.04] hover:text-text-1",
               )}
             >
               {tab.icon}

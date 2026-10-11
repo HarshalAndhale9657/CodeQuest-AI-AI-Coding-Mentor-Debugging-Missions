@@ -95,7 +95,7 @@ function TypingView() {
   }
   if (!drills.data) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" aria-busy="true">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" aria-busy="true">
         <Skeleton className="h-[420px] rounded-lc" />
         <div className="space-y-4">
           <Skeleton className="h-40 rounded-lc" />
@@ -161,13 +161,13 @@ function Warmup({ data }: { data: TypingDrills }) {
   const pace = prefs.pace ? (summary?.pace_cpm ?? null) : null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-4">
         <header>
           <p className="inline-flex items-center gap-2 rounded-full bg-brand-bg-2 px-3 py-1 text-xs font-medium text-brand">
             <Keyboard size={14} aria-hidden /> Syntax Warm-up
           </p>
-          <h1 className="mt-3 text-2xl font-semibold text-text-1">Code typing, accuracy first</h1>
+          <h1 className="mt-3 font-display text-[30px] font-bold leading-tight tracking-[-0.025em] text-text-1">Code typing, accuracy first</h1>
           <p className="mt-1 max-w-2xl text-sm text-text-2">
             Real Python, picked for your weak spots. A wrong key never moves the caret, so you build clean habits before speed.
             Brackets, colons, quotes and commas count extra: they cause most beginner syntax errors.
@@ -282,7 +282,7 @@ function Results({ result, errors, onRetry, onNext }: { result: TypingRunResult;
       <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
         <div>
           <p className="text-xs text-text-3">Words per minute</p>
-          <p className="text-5xl font-semibold tabular-nums text-brand">
+          <p className="font-display text-6xl font-extrabold tabular-nums tracking-[-0.03em] text-brand">
             <CountUp value={run.wpm} />
           </p>
         </div>
@@ -342,7 +342,7 @@ function ResultStat({ label, value, tone = "text-text-1" }: { label: string; val
   return (
     <div>
       <p className="text-xs text-text-3">{label}</p>
-      <p className={cx("text-2xl font-semibold tabular-nums", tone)}>{value}</p>
+      <p className={cx("font-display text-[26px] font-bold tabular-nums", tone)}>{value}</p>
     </div>
   );
 }
@@ -380,20 +380,20 @@ function StatsCard({ summary }: { summary: TypingSummary | null }) {
       </CardTitle>
       {summary ? (
         <>
-          <dl className="mt-3 grid grid-cols-2 gap-2 px-4">
+          <dl className="mt-3 grid grid-cols-2 gap-2 px-5">
             <Mini label="Best WPM" value={String(Math.round(summary.best_wpm))} />
             <Mini label="Accuracy (last 10)" value={`${Math.round(summary.accuracy * 100)}%`} />
             <Mini label="Syntax fluency" value={summary.syntax_accuracy === null ? "–" : `${Math.round(summary.syntax_accuracy * 100)}%`} />
             <Mini label="Runs" value={String(summary.runs)} />
           </dl>
-          <p className="mt-3 flex items-start gap-2 px-4 text-xs text-text-3">
+          <p className="mt-3 flex items-start gap-2 px-5 text-xs text-text-3">
             <Target size={14} className="mt-0.5 shrink-0 text-blue" aria-hidden />
             {summary.pace_cpm
               ? `Pace caret: ${Math.round(summary.pace_cpm / 5)} WPM. It rises as you improve.`
               : "Your pace caret unlocks after 3 runs at 95%+ accuracy."}
           </p>
           {summary.top_errors.length > 0 && (
-            <div className="mt-3 px-4">
+            <div className="mt-3 px-5">
               <p className="text-xs text-text-3">Trickiest keys lately</p>
               <ul className="mt-1.5 flex flex-wrap gap-1.5">
                 {summary.top_errors.map(([ch, n]) => (
@@ -406,7 +406,7 @@ function StatsCard({ summary }: { summary: TypingSummary | null }) {
           )}
         </>
       ) : (
-        <p className="px-4 pt-2 text-sm text-text-3">No runs yet. Your first drill sets your baseline.</p>
+        <p className="px-5 pt-2 text-sm text-text-3">No runs yet. Your first drill sets your baseline.</p>
       )}
     </Card>
   );
@@ -416,7 +416,7 @@ function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lc bg-panel px-3 py-2">
       <dt className="text-[11px] text-text-3">{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums text-text-1">{value}</dd>
+      <dd className="font-display text-xl font-bold tabular-nums text-text-1">{value}</dd>
     </div>
   );
 }
@@ -428,7 +428,7 @@ function FocusCard({ focus }: { focus: TypingDrills["focus"] }) {
       <CardTitle id="typing-focus" icon={<Brain size={18} className="text-brand" aria-hidden />}>
         Picked for you
       </CardTitle>
-      <div className="space-y-2 px-4 pt-2 text-sm">
+      <div className="space-y-2 px-5 pt-2 text-sm">
         {focus.syntax.length > 0 && (
           <p className="text-text-2">
             Your code keeps hitting <span className="text-text-1">{focus.syntax.map(mistakeLabel).join(", ")}</span>, so drills heavy in
@@ -453,7 +453,7 @@ function DrillList({ drills, selected, onSelect }: { drills: TypingDrill[]; sele
       <CardTitle id="typing-drills" icon={<Sparkles size={18} className="text-green" aria-hidden />}>
         Drills
       </CardTitle>
-      <ul className="mt-2 space-y-0.5 px-2">
+      <ul className="mt-2 space-y-0.5 px-3">
         {visible.map((d) => (
           <li key={d.id}>
             <button
@@ -478,7 +478,7 @@ function DrillList({ drills, selected, onSelect }: { drills: TypingDrill[]; sele
         ))}
       </ul>
       {drills.length > 8 && (
-        <button type="button" onClick={() => setShowAll((s) => !s)} className="mx-4 mt-2 text-xs text-brand hover:underline">
+        <button type="button" onClick={() => setShowAll((s) => !s)} className="mx-5 mt-2 text-xs text-brand hover:underline">
           {showAll ? "Show fewer" : `Show all ${drills.length} drills`}
         </button>
       )}

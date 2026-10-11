@@ -9,9 +9,9 @@ import { Skeleton } from "./ui/states";
 
 function ShellSkeleton({ workspace }: { workspace?: boolean }) {
   return (
-    <div className={cx("flex min-h-screen flex-col", workspace ? "bg-bg-ws" : "bg-bg")} aria-busy="true">
-      <div className={cx("h-[50px]", workspace ? "bg-bg-ws" : "border-b border-line bg-layer-1")} />
-      <div className="mx-auto w-full max-w-[1440px] flex-1 space-y-3 p-6">
+    <div className={cx("flex min-h-screen flex-col", workspace ? "bg-bg-ws" : "cq-night")} aria-busy="true">
+      <div className={cx(workspace ? "h-12 bg-bg-ws" : "h-14 border-b border-line/80")} />
+      <div className="mx-auto w-full max-w-[1440px] flex-1 space-y-3 px-4 py-8 sm:px-6">
         <span className="sr-only">Loading your quest…</span>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-40 w-full" />
@@ -31,14 +31,14 @@ function useAuthGuard(required: boolean) {
   return session;
 }
 
-/** List-page shell: LeetCode's #282828 top bar over a #1a1a1a page. */
+/** List-page shell: a translucent top bar over the night page. */
 export function AppShell({ children, requireAuth = true, wide = false }: { children: ReactNode; requireAuth?: boolean; wide?: boolean }) {
   const { token, name, hydrated } = useAuthGuard(requireAuth);
   if (!hydrated || (requireAuth && !token)) return <ShellSkeleton />;
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="cq-night flex min-h-screen flex-col">
       <TopBar name={token ? name : null} />
-      <main className={cx("mx-auto w-full flex-1 px-4 py-6 sm:px-6", wide ? "max-w-[1600px]" : "max-w-[1440px]")}>{children}</main>
+      <main className={cx("mx-auto w-full flex-1 px-4 pb-16 pt-6 sm:px-6 sm:pt-8", wide ? "max-w-[1600px]" : "max-w-[1440px]")}>{children}</main>
     </div>
   );
 }
@@ -50,7 +50,7 @@ export function WorkspaceGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** Workspace frame: LeetCode's #0f0f0f problem workspace with a centred action group. Use inside WorkspaceGate. */
+/** Workspace frame: the deepest ink behind the panels, with a centred action group. Use inside WorkspaceGate. */
 export function WorkspaceFrame({ children, left, center }: { children: ReactNode; left?: ReactNode; center?: ReactNode }) {
   const { name } = useHydratedSession();
   return (

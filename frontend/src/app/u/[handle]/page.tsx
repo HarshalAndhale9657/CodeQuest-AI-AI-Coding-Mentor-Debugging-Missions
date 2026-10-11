@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { GrowthSection } from "@/components/signals/growth";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { cx } from "@/components/ui/cx";
 import { ProgressRing } from "@/components/ui/progress-ring";
@@ -49,7 +49,7 @@ function PortfolioView() {
   }
   if (portfolio.isPending) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]" aria-busy="true">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]" aria-busy="true">
         <Skeleton className="h-80 rounded-lc" />
         <div className="space-y-4">
           <Skeleton className="h-44 rounded-lc" />
@@ -60,7 +60,7 @@ function PortfolioView() {
   }
   const p = portfolio.data;
   return (
-    <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="space-y-4">
         <IdentityCard p={p} own={own} />
         {own && me.data && <PlanCard me={me.data} />}
@@ -95,7 +95,7 @@ function IdentityCard({ p, own }: { p: Portfolio; own: boolean }) {
       <div className="flex items-center gap-4">
         <Avatar name={p.name} size={72} />
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-semibold text-text-1">{p.name}</h1>
+          <h1 className="truncate font-display text-[22px] font-bold tracking-[-0.01em] text-text-1">{p.name}</h1>
           <p className="truncate text-sm text-text-3">@{p.handle}</p>
         </div>
       </div>
@@ -109,8 +109,8 @@ function IdentityCard({ p, own }: { p: Portfolio; own: boolean }) {
           {copied ? "Link copied" : "Share profile"}
         </Button>
         {own && (
-          <Link href="/settings" className="inline-flex h-8 flex-1 items-center justify-center rounded-lc-sm bg-green/15 px-3 text-sm font-medium text-green hover:bg-green/25">
-            Edit settings
+          <Link href="/settings" className={buttonClass("secondary", "sm", "flex-1")}>
+            Edit profile
           </Link>
         )}
       </div>
@@ -120,7 +120,7 @@ function IdentityCard({ p, own }: { p: Portfolio; own: boolean }) {
 
 function StatTile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lc bg-panel px-3 py-3">
+    <div className="flex items-center gap-3 rounded-lc-sm bg-panel px-3.5 py-3 ring-1 ring-inset ring-white/[0.04]">
       {icon}
       <div>
         <p className="text-xs text-text-3">{label}</p>
@@ -139,7 +139,7 @@ function StatsCard({ p }: { p: Portfolio }) {
           <ProgressRing value={s.solved} total={s.missions_total} size={120} stroke={8} tone="stroke-brand" label={`${s.solved} of ${s.missions_total} missions solved`} />
         </div>
         <div className="text-center">
-          <p className="text-2xl font-semibold tabular-nums text-text-1">
+          <p className="font-display text-[28px] font-bold tabular-nums text-text-1">
             {s.solved}
             <span className="text-sm font-normal text-text-3">/{s.missions_total}</span>
           </p>
@@ -407,7 +407,7 @@ function TypingCard({ typing, own }: { typing: Portfolio["typing"]; own: boolean
         Code typing
       </CardTitle>
       {typing ? (
-        <div className="grid grid-cols-2 gap-2 px-4 pt-4 text-center">
+        <div className="grid grid-cols-2 gap-2 px-5 pt-4 text-center">
           <div className="rounded-lc bg-panel py-2">
             <p className="text-lg font-semibold tabular-nums text-text-1">{Math.round(typing.best_wpm)}</p>
             <p className="text-[11px] text-text-3">Best WPM</p>
@@ -428,7 +428,7 @@ function TypingCard({ typing, own }: { typing: Portfolio["typing"]; own: boolean
           </div>
         </div>
       ) : (
-        <p className="px-4 pt-2 text-sm text-text-3">No typing runs yet.</p>
+        <p className="px-5 pt-2 text-sm text-text-3">No typing runs yet.</p>
       )}
     </Card>
   );

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/theme.css";
 
+/* LeetCode's palette (tokens.css), shared with the Companion extension. */
 @theme inline {
   --color-bg: var(--lc-bg);
   --color-bg-ws: var(--lc-bg-workspace);
@@ -22,6 +24,7 @@
   --color-text-3: var(--lc-text-3);
   --color-gutter: var(--lc-text-gutter);
   --color-brand: var(--lc-brand);
+  --color-brand-ink: var(--lc-bg);
   --color-brand-bg: var(--lc-brand-bg);
   --color-brand-bg-2: var(--lc-brand-bg-2);
   --color-green: var(--lc-green);
@@ -33,50 +36,104 @@
   --color-blue: var(--lc-blue);
   --color-purple: var(--lc-purple);
   --color-cyan: var(--lc-cyan);
-  --radius-lc-sm: var(--lc-radius-sm);
-  --radius-lc: var(--lc-radius);
-  --shadow-menu: var(--lc-shadow-menu);
-  --font-sans: var(--lc-font-sans);
-  --font-mono: var(--lc-font-mono);
+  --radius-lc-sm: var(--cq-radius-sm);
+  --radius-lc: var(--cq-radius);
+  --radius-lc-lg: var(--cq-radius-lg);
+  --shadow-menu: var(--cq-shadow-menu);
+  --shadow-card: var(--cq-shadow-card);
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, Menlo, Consolas, monospace;
 }
 
-html,
-body {
-  background: var(--lc-bg);
-  color: var(--lc-text-1);
+/*
+ * Base styles live in the base layer so Tailwind utilities can override them (unlayered rules would beat every
+ * utility, e.g. `[scrollbar-width:none]` on the concept row).
+ */
+@layer base {
+  html {
+    background: var(--cq-ink-1);
+    color: var(--cq-text-1);
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--cq-ink-1);
+    color: var(--cq-text-1);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* No ligatures in code: learners must see the exact characters they type (`!=`, not a ≠ glyph). */
+  code,
+  kbd,
+  pre,
+  samp,
+  .font-mono {
+    font-variant-ligatures: none;
+    font-feature-settings: "calt" 0, "liga" 0;
+  }
+
+  ::selection {
+    background: rgba(255, 161, 22, 0.3);
+    color: var(--cq-text-1);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--cq-brand);
+    outline-offset: 2px;
+  }
+
+  input[type="range"] {
+    accent-color: var(--cq-brand);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cq-line-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--cq-line-strong);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
-body {
-  font-family: var(--lc-font-sans);
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer components {
+  /*
+   * The lamp: the one warm-lit surface on a page (the hero preview, Next up, the prediction question).
+   * Used once per screen so it keeps meaning "look here".
+   */
+  .cq-lamp {
+    background: linear-gradient(135deg, var(--lc-brand-bg-2), var(--lc-brand-bg) 70%);
+    box-shadow: inset 0 0 0 1px rgba(255, 161, 22, 0.18);
+  }
 
-::selection {
-  background: rgba(255, 161, 22, 0.3);
-}
-
-:focus-visible {
-  outline: 2px solid var(--lc-brand);
-  outline-offset: 2px;
-}
-
-/* LeetCode-style thin scrollbars */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--lc-border-strong) transparent;
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--lc-border-strong);
-  border-radius: 999px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
+  /* List-page background. */
+  .cq-night {
+    background: var(--lc-bg);
+  }
 }
 
 /*
@@ -106,7 +163,7 @@ body {
   pointer-events: none;
 }
 .cq-handle::before {
-  background: var(--lc-border-strong);
+  background: var(--cq-line-strong);
   transition: opacity 150ms;
 }
 .cq-handle::after {
@@ -115,16 +172,16 @@ body {
   transition: opacity 150ms;
 }
 .cq-handle[aria-orientation="vertical"]::before {
-  top: calc(50% - 12px);
+  top: calc(50% - 14px);
   left: 3px;
   width: 2px;
-  height: 24px;
+  height: 28px;
 }
 .cq-handle[aria-orientation="horizontal"]::before {
-  left: calc(50% - 12px);
+  left: calc(50% - 14px);
   top: 3px;
   height: 2px;
-  width: 24px;
+  width: 28px;
 }
 .cq-handle[aria-orientation="vertical"]::after {
   inset: 0 3px;
@@ -136,7 +193,7 @@ body {
 .cq-handle[data-separator="active"]::after,
 .cq-handle[data-separator="focus"]::after,
 .cq-handle:focus-visible::after {
-  opacity: 1;
+  opacity: 0.85;
 }
 .cq-handle[data-separator="hover"]::before,
 .cq-handle[data-separator="active"]::before,
@@ -154,7 +211,7 @@ body {
   }
 }
 .cq-fade-in {
-  animation: cq-fade-in 140ms ease-out;
+  animation: cq-fade-in 160ms ease-out;
 }
 
 /* Monaco decorations (global, Monaco renders outside React) */
@@ -162,7 +219,7 @@ body {
   background: rgba(255, 161, 22, 0.12);
 }
 .cq-region-gutter {
-  border-left: 3px solid var(--lc-brand);
+  border-left: 3px solid var(--cq-brand);
   margin-left: 4px;
 }
 .cq-crash-line {
@@ -176,5 +233,6 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

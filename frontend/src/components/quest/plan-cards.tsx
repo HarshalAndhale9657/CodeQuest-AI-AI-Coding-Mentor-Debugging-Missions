@@ -16,9 +16,9 @@ export function RoadmapCard({ me }: { me: Me }) {
     return (
       <Link
         href="/onboarding"
-        className="group block rounded-lc bg-linear-to-br from-blue/20 to-layer-1 p-4 ring-1 ring-blue/30 transition-colors hover:ring-blue/60"
+        className="group block rounded-lc bg-linear-to-br from-blue/15 to-layer-1 p-5 ring-1 ring-blue/30 transition-colors hover:ring-blue/60"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold text-blue">
+        <span className="flex items-center gap-2 font-display text-[15px] font-semibold text-blue">
           <Sparkles size={16} aria-hidden /> Get your personal roadmap
         </span>
         <span className="mt-1 block text-sm text-text-2">
@@ -31,13 +31,13 @@ export function RoadmapCard({ me }: { me: Me }) {
     );
   }
 
-  if (roadmap.isPending) return <Skeleton className="h-28 w-full rounded-lc" />;
+  if (roadmap.isPending) return <Skeleton className="h-32 w-full rounded-lc" />;
   const plan = roadmap.data;
   const week = plan?.weeks.find((w) => w.week === plan.current_week);
   const nextItem = week?.items.find((i) => !i.done);
   return (
-    <Link href="/roadmap" className="group block rounded-lc bg-layer-1 p-4 transition-colors hover:bg-hover">
-      <span className="flex items-center gap-2 text-sm font-semibold text-text-1">
+    <Link href="/roadmap" className="group block rounded-lc bg-layer-1 p-5 shadow-card ring-1 ring-line/70 transition-colors hover:bg-hover">
+      <span className="flex items-center gap-2 font-display text-[15px] font-semibold text-text-1">
         <MapIcon size={16} className="text-blue" aria-hidden /> My roadmap
         {plan && (
           <span className="ml-auto text-xs font-normal text-text-3 tabular-nums">
@@ -50,12 +50,12 @@ export function RoadmapCard({ me }: { me: Me }) {
           <span className="mt-1 block text-xs text-text-2">
             Week {week.week} of {plan.weeks.length} · {week.done}/{week.items.length} this week
           </span>
-          <span className="mt-2 block h-1 overflow-hidden rounded-full bg-fill-3" aria-hidden>
+          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-fill-3" aria-hidden>
             <span className="block h-full rounded-full bg-blue" style={{ width: `${(week.done / Math.max(1, week.items.length)) * 100}%` }} />
           </span>
           {nextItem && (
-            <span className="mt-2 block truncate text-sm text-text-1">
-              Next: <span className="group-hover:text-brand">{nextItem.title}</span>
+            <span className="mt-3 block truncate text-sm text-text-2">
+              Next: <span className="font-medium text-text-1 group-hover:text-brand">{nextItem.title}</span>
             </span>
           )}
         </>
@@ -73,7 +73,7 @@ export function RoadmapCard({ me }: { me: Me }) {
 export function WarmupCard({ me }: { me: Me }) {
   const slips = me.mistakes.recurring.filter((k) => k.startsWith("syntax:"));
   return (
-    <Link href="/typing" className="group flex items-center gap-3 rounded-lc bg-layer-1 p-4 transition-colors hover:bg-hover">
+    <Link href="/typing" className="group flex items-center gap-3 rounded-lc bg-layer-1 p-4 shadow-card ring-1 ring-line/70 transition-colors hover:bg-hover">
       <span className="grid size-9 shrink-0 place-items-center rounded-lc bg-cyan/15">
         <Keyboard size={18} className="text-cyan" aria-hidden />
       </span>

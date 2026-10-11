@@ -3,6 +3,7 @@
 import Editor, { loader, type BeforeMount, type OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEffect, useRef } from "react";
+import { mono } from "@/app/fonts";
 import { EditorPlaceholder } from "./editor-placeholder";
 
 loader.config({ paths: { vs: "/monaco/vs" } });
@@ -83,6 +84,8 @@ export default function CodeEditorInner({
       run: () => submitRef.current?.(),
     });
     instance.onDidChangeCursorPosition((e) => cursorRef.current?.(e.position.lineNumber, e.position.column));
+    // Monaco measures glyph widths once; re-measure when the web font arrives so the caret lines up.
+    void document.fonts?.ready.then(() => monaco.editor.remeasureFonts());
   };
 
   useEffect(() => {
@@ -137,15 +140,16 @@ export default function CodeEditorInner({
       loading={<EditorPlaceholder />}
       options={{
         fontSize: 14,
-        fontFamily: 'Menlo, Monaco, Consolas, "Courier New", monospace',
-        lineHeight: 21,
+        fontFamily: `${mono.style.fontFamily}, Menlo, Consolas, monospace`,
+        fontLigatures: false,
+        lineHeight: 22,
         minimap: { enabled: false },
         automaticLayout: true,
         scrollBeyondLastLine: false,
         tabSize: 4,
         insertSpaces: true,
         renderLineHighlight: "line",
-        padding: { top: 12 },
+        padding: { top: 14, bottom: 14 },
         scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
         overviewRulerBorder: false,
         guides: { indentation: true },

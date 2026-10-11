@@ -22,7 +22,7 @@ export function ProfileCard() {
           <UserRound size={20} className="text-blue" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 id="profile-title" className="text-base font-semibold text-text-1">
+          <h2 id="profile-title" className="font-display text-[17px] font-semibold text-text-1">
             Your profile &amp; goals
           </h2>
           <p className="mt-0.5 text-sm text-text-2">Your roadmap is planned from these answers and from what you actually solve.</p>
@@ -122,7 +122,7 @@ export function DataCard() {
 
   return (
     <Card id="data" aria-labelledby="data-title" className="scroll-mt-20 p-5">
-      <h2 id="data-title" className="text-base font-semibold text-text-1">
+      <h2 id="data-title" className="font-display text-[17px] font-semibold text-text-1">
         Your data
       </h2>
       <p className="mt-0.5 text-sm text-text-2">

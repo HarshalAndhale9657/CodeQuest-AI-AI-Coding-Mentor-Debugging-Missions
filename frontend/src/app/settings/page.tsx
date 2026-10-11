@@ -16,7 +16,7 @@ export default function SettingsPage() {
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
-          <h1 className="text-2xl font-semibold text-text-1">Settings</h1>
+          <h1 className="font-display text-[30px] font-bold tracking-[-0.025em] text-text-1">Settings</h1>
           <p className="mt-1 text-sm text-text-2">Your profile and goals, the AI mentor, the LeetCode Companion and your data.</p>
         </header>
         <ProfileCard />
@@ -52,7 +52,7 @@ function AiCard() {
           <Sparkles size={20} className="text-brand" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 id="ai-title" className="text-base font-semibold text-text-1">
+          <h2 id="ai-title" className="font-display text-[17px] font-semibold text-text-1">
             AI Mentor wording
           </h2>
           <p className="mt-0.5 text-sm text-text-2">

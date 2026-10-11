@@ -7,10 +7,10 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ConceptPills } from "@/components/quest/concept-pills";
 import { MissionTable, MissionTableSkeleton, type MissionRow } from "@/components/quest/mission-table";
+import { QuestHeader } from "@/components/quest/quest-header";
 import { QuestRail } from "@/components/quest/right-rail";
 import { QuestSidebar } from "@/components/quest/sidebar";
 import { cx } from "@/components/ui/cx";
-import { ProgressRing } from "@/components/ui/progress-ring";
 import { ErrorState, Skeleton } from "@/components/ui/states";
 import { ApiError, api } from "@/lib/api";
 
@@ -61,7 +61,6 @@ function Home() {
     );
   }
 
-  const solved = rows.filter((m) => m.solved).length;
   const pickRandom = () => {
     const unsolved = visible.filter((m) => !m.solved);
     const pool = unsolved.length ? unsolved : visible;
@@ -70,7 +69,7 @@ function Home() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[208px_minmax(0,1fr)] xl:grid-cols-[208px_minmax(0,1fr)_336px] xl:gap-8">
       <QuestSidebar
         handle={me.data?.user.handle}
         recurring={me.data?.mistakes.recurring.length ?? 0}
@@ -79,22 +78,31 @@ function Home() {
         onDebug={() => setType((t) => (t === "debug" ? "all" : "debug"))}
       />
 
-      <section aria-label="Quest map" className="min-w-0 space-y-4">
+      <section aria-label="Quest map" className="min-w-0 space-y-5">
+        {me.data && missions.data ? (
+          <QuestHeader me={me.data} missions={missions.data} />
+        ) : (
+          <div className="space-y-3 pb-1" aria-hidden>
+            <Skeleton className="h-9 w-72" />
+            <Skeleton className="h-5 w-96 max-w-full" />
+            <Skeleton className="h-8 w-80 max-w-full" />
+          </div>
+        )}
+        <div className="h-px bg-line/70" />
         {missions.isPending ? <Skeleton className="h-9 w-full rounded-full" /> : <ConceptPills concepts={concepts} value={concept} onChange={setConcept} />}
-        <div className="h-px bg-line" />
         <div className="flex flex-wrap items-center gap-3">
           <label className="relative flex h-9 w-full items-center sm:w-64">
             <span className="sr-only">Search missions</span>
-            <Search size={16} className="pointer-events-none absolute left-3 text-text-2" aria-hidden />
+            <Search size={16} className="pointer-events-none absolute left-3 text-text-3" aria-hidden />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search missions"
-              className="h-full w-full rounded-lc bg-hover pl-9 pr-3 text-sm text-text-1 placeholder:text-text-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-line-strong"
+              placeholder="Search by title or number"
+              className="h-full w-full rounded-full bg-fill-2/80 pl-9 pr-3 text-sm text-text-1 ring-1 ring-inset ring-line transition-shadow placeholder:text-text-3 focus:outline-none focus-visible:ring-brand/50"
             />
           </label>
-          <div role="radiogroup" aria-label="Mission type" className="flex h-9 items-center rounded-full bg-fill-2 p-1">
+          <div role="radiogroup" aria-label="Mission type" className="flex h-9 items-center rounded-full bg-fill-2/80 p-1 ring-1 ring-inset ring-line">
             {(["all", "build", "debug"] as const).map((t) => (
               <button
                 key={t}
@@ -103,30 +111,26 @@ function Home() {
                 aria-checked={type === t}
                 onClick={() => setType(t)}
                 className={cx(
-                  "h-7 rounded-full px-3 text-xs capitalize transition-colors",
-                  type === t ? "bg-fill-4 font-medium text-text-1" : "text-text-2 hover:text-text-1",
+                  "h-7 rounded-full px-3.5 text-[13px] capitalize transition-colors",
+                  type === t ? "bg-fill-4 font-semibold text-text-1 shadow-sm" : "text-text-2 hover:text-text-1",
                 )}
               >
                 {t}
               </button>
             ))}
           </div>
-          <div className="ml-auto flex items-center gap-3 text-sm text-text-2">
-            <span className="inline-flex items-center gap-2">
-              <ProgressRing value={solved} total={rows.length} label={`${solved} of ${rows.length} missions solved`} />
-              <span className="tabular-nums">
-                {solved}/{rows.length} Solved
-              </span>
+          <div className="ml-auto flex items-center gap-2 text-[13px] text-text-3">
+            <span className="tabular-nums" aria-live="polite">
+              {visible.length} {visible.length === 1 ? "mission" : "missions"}
             </span>
             <button
               type="button"
               onClick={pickRandom}
               disabled={visible.length === 0}
-              className="grid size-8 place-items-center rounded-full text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1 disabled:opacity-40"
-              aria-label="Pick a random unsolved mission"
-              title="Pick one for me"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] text-text-2 transition-colors hover:bg-white/[0.05] hover:text-text-1 disabled:opacity-40"
+              title="Open a random unsolved mission from this list"
             >
-              <Shuffle size={16} aria-hidden />
+              <Shuffle size={15} aria-hidden /> Surprise me
             </button>
           </div>
         </div>

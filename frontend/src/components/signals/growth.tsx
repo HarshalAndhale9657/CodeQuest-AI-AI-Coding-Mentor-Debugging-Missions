@@ -19,7 +19,7 @@ function Tip({ label, children }: { label: string; children: ReactNode }) {
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-lc-sm bg-menu px-2 py-1 text-xs text-text-1 opacity-0 shadow-menu transition-opacity group-focus-within/tip:opacity-100 group-hover/tip:opacity-100"
+        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 hidden w-max max-w-64 -translate-x-1/2 rounded-lc-sm bg-menu px-2.5 py-1.5 text-xs leading-snug text-text-1 shadow-menu group-focus-within/tip:block group-hover/tip:block"
       >
         {label}
       </span>
@@ -30,7 +30,7 @@ function Tip({ label, children }: { label: string; children: ReactNode }) {
 /** Every chart has a table twin: the accessible, colour-free way to read the same numbers. */
 function TableView({ caption, head, rows }: { caption: string; head: string[]; rows: (string | number)[][] }) {
   return (
-    <details className="px-4 pt-3 text-xs text-text-3">
+    <details className="px-5 pt-3 text-xs text-text-3">
       <summary className="cursor-pointer select-none hover:text-text-1">Show as table</summary>
       <table className="mt-2 w-full text-left text-text-2">
         <caption className="sr-only">{caption}</caption>
@@ -61,12 +61,12 @@ function TableView({ caption, head, rows }: { caption: string; head: string[]; r
 
 function Kpi({ icon, label, value, sub, trend }: { icon: ReactNode; label: string; value: string; sub: string; trend?: ReactNode }) {
   return (
-    <div className="rounded-lc bg-panel px-3 py-3">
+    <div className="rounded-lc-sm bg-panel px-3.5 py-3 ring-1 ring-inset ring-white/[0.04]">
       <p className="flex items-center gap-1.5 text-xs text-text-3">
         {icon}
         {label}
       </p>
-      <p className="mt-1 flex items-baseline gap-2 text-xl font-semibold text-text-1">
+      <p className="mt-1 flex items-baseline gap-2 font-display text-[22px] font-bold text-text-1">
         {value}
         {trend}
       </p>
@@ -91,7 +91,7 @@ function GrowthKpis({ g }: { g: Growth }) {
     ) : null;
   const p = g.prediction;
   return (
-    <div className="grid gap-2 px-4 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-2 px-5 pt-4 sm:grid-cols-2 xl:grid-cols-4">
       <Kpi
         icon={<Lightbulb size={14} className="text-medium" aria-hidden />}
         label="Hint-free solves"
@@ -145,8 +145,8 @@ function HintTrendCard({ g }: { g: Growth }) {
         <EmptyState title="No solves yet" text="Each solved mission adds a point: did you need hints?" />
       ) : (
         <>
-          <p className="px-4 pt-1 text-xs text-text-3">Share of your last {Math.min(5, series.length)} solves that needed no hints.</p>
-          <div className="px-4 pt-3">
+          <p className="px-5 pt-1 text-xs text-text-3">Share of your last {Math.min(5, series.length)} solves that needed no hints.</p>
+          <div className="px-5 pt-3">
             <div className="relative ml-9 mr-2 h-28 border-b border-l border-line" role="img" aria-label={`Hint-free rate over ${series.length} solves, latest ${Math.round((rolling.at(-1)?.hint_free_rate ?? 0) * 100)}%`}>
               {[0, 50].map((y) => (
                 <span key={y} className="absolute inset-x-0 border-t border-line/60" style={{ top: `${y}%` }} aria-hidden />
@@ -225,8 +225,8 @@ function StruggleCard({ g, own }: { g: Growth; own: boolean }) {
   return (
     <Card className="pb-4">
       <CardTitle icon={<Swords size={18} className="text-red" aria-hidden />}>Struggle map</CardTitle>
-      <p className="px-4 pt-1 text-xs text-text-3">Every mission, by tier. The number is how many submissions it took.</p>
-      <div className="space-y-2 px-4 pt-3">
+      <p className="px-5 pt-1 text-xs text-text-3">Every mission, by tier. The number is how many submissions it took.</p>
+      <div className="space-y-2 px-5 pt-3">
         {tiers.map((tier) => (
           <div key={tier} className="flex items-center gap-3">
             <span className="w-24 shrink-0 truncate text-xs text-text-3">{TIER_NAME[tier] ?? `Tier ${tier}`}</span>
@@ -239,11 +239,11 @@ function StruggleCard({ g, own }: { g: Growth; own: boolean }) {
                       tabIndex={own ? undefined : 0}
                       aria-label={describe(t)}
                       className={cx(
-                        "grid size-8 place-items-center rounded-lc-sm text-xs font-semibold",
+                        "grid size-8 place-items-center text-xs font-semibold",
+                        t.type === "debug" ? "rounded-full" : "rounded-lc-sm",
                         t.state === "solved" && t.effort && EFFORT_TILE[t.effort],
                         t.state === "stuck" && "border-2 border-red text-red",
                         t.state === "untouched" && "bg-fill-2 text-text-3",
-                        t.type === "debug" && "rounded-full",
                       )}
                     >
                       {t.state === "untouched" ? "" : t.state === "stuck" ? "!" : t.submissions}
@@ -259,7 +259,7 @@ function StruggleCard({ g, own }: { g: Growth; own: boolean }) {
           </div>
         ))}
       </div>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-3 text-[11px] text-text-3" aria-label="Legend">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 px-5 pt-3 text-[11px] text-text-3" aria-label="Legend">
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-green/80" aria-hidden /> Clean: 1 submission, no hints</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-medium/80" aria-hidden /> Worked for it</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-red/80" aria-hidden /> Hard: 4+ submissions or 2+ hints</li>
@@ -305,13 +305,13 @@ export function MistakeLanesCard({ g }: { g: Growth }) {
   return (
     <Card className="pb-4">
       <CardTitle icon={<Bug size={18} className="text-brand" aria-hidden />}>Mistake lanes</CardTitle>
-      <p className="px-4 pt-1 text-xs text-text-3">
+      <p className="px-5 pt-1 text-xs text-text-3">
         One lane per kind of bug across your attempts. A bug that keeps coming back is a boss; stop repeating it to defeat it.
       </p>
       {lanes.length === 0 ? (
         <EmptyState title="A clean slate" text="No mistakes recorded yet." />
       ) : (
-        <div className="overflow-x-auto px-4 pt-3">
+        <div className="overflow-x-auto px-5 pt-3">
           <div className="grid min-w-[28rem] items-center gap-x-3 gap-y-2" style={{ gridTemplateColumns: "minmax(9rem, 12rem) minmax(0, 1fr)" }}>
             <span />
             <div className="grid text-[10px] text-text-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} aria-hidden>
@@ -379,11 +379,11 @@ function PredictionStatsCard({ g }: { g: Growth }) {
         <EmptyState title="No predictions yet" text="The first submission of each attempt asks what your code will return." />
       ) : (
         <>
-          <p className="px-4 pt-1 text-xs text-text-3">
+          <p className="px-5 pt-1 text-xs text-text-3">
             Before running, you predicted your code&apos;s output {p.total} time{p.total === 1 ? "" : "s"}. Rows: did you know the
             right answer? Columns: did you know what your code would do?
           </p>
-          <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5 px-4 pt-3 text-xs">
+          <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5 px-5 pt-3 text-xs">
             <span />
             <span className="text-center text-text-3">Read the code right</span>
             <span className="text-center text-text-3">Code surprised you</span>
@@ -398,7 +398,7 @@ function PredictionStatsCard({ g }: { g: Growth }) {
               tone="bg-purple/10"
             />
           </div>
-          <ul className="space-y-2 px-4 pt-4">
+          <ul className="space-y-2 px-5 pt-4">
             {p.by_concept.map((c) => (
               <li key={c.concept}>
                 <div className="flex items-center justify-between gap-2 text-sm">
@@ -450,10 +450,10 @@ function DebuggingCard({ g }: { g: Growth }) {
         <EmptyState title="Not enough data yet" text="Your style appears after an attempt with two or more submissions." />
       ) : (
         <>
-          <p className="px-4 pt-1 text-xs text-text-3">
+          <p className="px-5 pt-1 text-xs text-text-3">
             From {d.journeys} attempt{d.journeys === 1 ? "" : "s"} with more than one submission.
           </p>
-          <ul className="space-y-2 px-4 pt-3">
+          <ul className="space-y-2 px-5 pt-3">
             {rows.map((r) => (
               <li key={r.style} className="grid grid-cols-[8rem_minmax(0,1fr)_1.5rem] items-center gap-2 text-sm">
                 <span className="truncate text-text-1">{STYLE_COPY[r.style].title}</span>
@@ -464,7 +464,7 @@ function DebuggingCard({ g }: { g: Growth }) {
               </li>
             ))}
           </ul>
-          <div className="grid grid-cols-2 gap-2 px-4 pt-4">
+          <div className="grid grid-cols-2 gap-2 px-5 pt-4">
             <Kpi
               icon={<TrendingUp size={14} className="text-green" aria-hidden />}
               label="Steps forward"
@@ -479,7 +479,7 @@ function DebuggingCard({ g }: { g: Growth }) {
             />
           </div>
           {reports > 0 && (
-            <p className="px-4 pt-3 text-xs text-text-2">
+            <p className="px-5 pt-3 text-xs text-text-2">
               Your own reflections matched the data in {d.self_report.agrees ?? 0} of {reports} attempt{reports === 1 ? "" : "s"}.
             </p>
           )}

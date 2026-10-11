@@ -18,7 +18,7 @@ function Field({ label, children, tone }: { label: string; children: React.React
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-text-3">{label}</p>
-      <div className={cx("whitespace-pre-wrap break-all rounded-lc bg-fill-2 px-3 py-2 font-mono text-[13px] text-text-1", tone)}>{children}</div>
+      <div className={cx("whitespace-pre-wrap break-all rounded-lc-sm bg-fill-2 px-3 py-2 font-mono text-[13px] text-text-1", tone)}>{children}</div>
     </div>
   );
 }
@@ -51,7 +51,7 @@ function VisibleCase({ test }: { test: VisibleTestResult }) {
       )}
       {test.stdout && <Field label="Stdout">{test.stdout}</Field>}
       {test.explanation && (
-        <p className="rounded-lc border-l-2 border-brand bg-brand/5 px-3 py-2 text-sm leading-relaxed text-text-1">{test.explanation}</p>
+        <p className="rounded-r-lc-sm border-l-2 border-brand bg-brand/[0.06] px-3.5 py-2.5 text-sm leading-relaxed text-text-1">{test.explanation}</p>
       )}
     </div>
   );
@@ -109,7 +109,7 @@ export function ResultsBoard({ result, children }: { result: JudgeResult; childr
     <section aria-label="Test results" className="space-y-4">
       <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="space-y-1" aria-live="polite">
         <div className="flex flex-wrap items-baseline gap-x-3">
-          <h2 className={cx("text-xl font-semibold", result.syntax_error ? "text-red" : VERDICT_TEXT[headline])}>
+          <h2 className={cx("font-display text-[22px] font-bold tracking-[-0.01em]", result.syntax_error ? "text-red" : VERDICT_TEXT[headline])}>
             {result.syntax_error ? "Syntax Error" : HEADLINE[headline]}
           </h2>
           <span className="text-sm text-text-3">
@@ -139,7 +139,7 @@ export function ResultsBoard({ result, children }: { result: JudgeResult; childr
                 aria-selected={i === selected}
                 onClick={() => setSelected(i)}
                 className={cx(
-                  "inline-flex h-8 items-center gap-1.5 rounded-lc px-3 text-sm transition-colors",
+                  "inline-flex h-8 items-center gap-1.5 rounded-lc-sm px-3 text-sm transition-colors",
                   i === selected ? "bg-fill-3 text-text-1" : "text-text-2 hover:bg-fill-2",
                 )}
               >

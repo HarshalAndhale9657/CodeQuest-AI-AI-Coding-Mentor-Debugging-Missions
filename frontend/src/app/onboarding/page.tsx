@@ -86,7 +86,7 @@ function Wizard({ view }: { view: ProfileView }) {
         <p className="inline-flex items-center gap-2 rounded-full bg-brand-bg-2 px-3 py-1 text-xs font-medium text-brand">
           <MapIcon size={14} aria-hidden /> Personal roadmap
         </p>
-        <h1 className="mt-3 text-2xl font-semibold text-text-1">{view.onboarded ? "Update your plan" : "Let's plan your quest"}</h1>
+        <h1 className="mt-3 font-display text-[30px] font-bold tracking-[-0.025em] text-text-1">{view.onboarded ? "Update your plan" : "Let's plan your quest"}</h1>
         <p className="mt-1 text-sm text-text-2">Four quick steps. CodeQuest turns your answers and your real mistakes into a week-by-week plan.</p>
       </header>
 

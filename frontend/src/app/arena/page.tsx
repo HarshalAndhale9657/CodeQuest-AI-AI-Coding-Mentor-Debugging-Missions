@@ -38,7 +38,7 @@ function Arena() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="space-y-3">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold text-text-1">
+        <h1 className="flex items-center gap-2.5 font-display text-[30px] font-bold tracking-[-0.025em] text-text-1">
           <Swords size={24} className="text-red" aria-hidden /> Sandbox Arena
         </h1>
         <p className="max-w-3xl text-[15px] text-text-2">

@@ -42,7 +42,7 @@ export function HintLadder({ ladder, maxLevel, next, nextFetchedAt, canAsk, busy
     <section aria-label="Hints" className="space-y-4">
       <div className="flex items-center gap-2">
         <Lightbulb size={18} className="text-medium" aria-hidden />
-        <h2 className="text-base font-semibold text-text-1">Hint ladder</h2>
+        <h2 className="font-display text-[17px] font-bold text-text-1">Hint ladder</h2>
         <span className="ml-auto rounded-full bg-fill-3 px-2 py-0.5 text-xs text-text-2">
           {ladder.length}/{maxLevel} used · never the answer
         </span>
@@ -52,7 +52,7 @@ export function HintLadder({ ladder, maxLevel, next, nextFetchedAt, canAsk, busy
         {ladder.map((h) => (
           <motion.li key={h.level} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="relative flex gap-3">
             <span className="relative z-10 grid size-6 shrink-0 place-items-center rounded-full bg-medium text-xs font-semibold text-bg">{h.level}</span>
-            <div className="min-w-0 flex-1 rounded-lc bg-fill-2 p-3">
+            <div className="min-w-0 flex-1 rounded-lc-sm bg-fill-2 p-3.5 ring-1 ring-inset ring-white/[0.04]">
               <div className="flex items-center gap-2">
                 <p className="text-xs font-medium text-medium">{h.title}</p>
                 {h.source === "ai" && (

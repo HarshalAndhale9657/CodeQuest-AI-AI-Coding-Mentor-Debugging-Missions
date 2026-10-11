@@ -51,7 +51,7 @@ export function ConnectExtension() {
           <Puzzle size={20} className="text-green" aria-hidden />
         </span>
         <div>
-          <h2 id="connect-ext" className="text-base font-semibold text-text-1">
+          <h2 id="connect-ext" className="font-display text-[17px] font-semibold text-text-1">
             LeetCode Companion
           </h2>
           <p className="mt-0.5 text-sm text-text-2">
