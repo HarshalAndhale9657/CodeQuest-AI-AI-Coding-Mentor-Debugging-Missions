@@ -64,19 +64,45 @@ Beginners learn to program by writing code and reading what goes wrong, but the 
 ## Our solution: a learning loop
 
 ```mermaid
-flowchart LR
-    A["Write code<br/>Monaco editor"] --> B["Judge every test<br/>in its own sandbox"]
-    B --> C["Explain the failure<br/>plain words · own variables"]
-    C --> D["Hint ladder<br/>Where → What → Teach → Fill the blank<br/>leak-guarded"]
-    D --> A
-    B --> E["Mistake Memory<br/>static + runtime evidence"]
-    E -->|"a pattern repeats"| F["Adapt<br/>debug mission · re-ranked missions · pre-flight check"]
-    F --> A
-    B --> G["Skill map<br/>concept Elo · mastery bands"]
-    G --> F
-    B --> H["Learning signals<br/>predict · pass review · debug journey"]
-    H --> G
+flowchart TB
+    A["✍️ <b>Write code</b><br/>Monaco editor"]
+    B["🧪 <b>Judge every test</b><br/>one sandbox per test"]
+    C["💬 <b>Explain the failure</b><br/>plain words · your own variables"]
+    D["🪜 <b>Hint ladder</b><br/>Where → What → Teach → Blank"]
+    E[("🧠 <b>Mistake Memory · skill map</b><br/>runtime evidence · concept Elo · signals")]
+    F["🎯 <b>Adapt</b><br/>debug mission · re-ranked missions · pre-flight"]
+    A a1@==> B
+    B a2@==>|"failed"| C
+    C a3@==> D
+    D a4@==>|"try again"| A
+    B m1@-->|"every result"| E
+    E m2@-->|"a pattern repeats"| F
+    F m3@-->|"next mission"| A
+    a1@{ animation: fast }
+    a2@{ animation: fast }
+    a3@{ animation: fast }
+    a4@{ animation: fast }
+    m1@{ animation: slow }
+    m2@{ animation: slow }
+    m3@{ animation: slow }
+    classDef zone fill:#8b949e0f,stroke:#8b949e66,stroke-width:1px,stroke-dasharray:6\,4
+    classDef client fill:#0a84ff1f,stroke:#0a84ff,stroke-width:1.5px
+    classDef core fill:#ffa1161f,stroke:#ffa116,stroke-width:1.5px
+    classDef learn fill:#2cbb5d1f,stroke:#2cbb5d,stroke-width:1.5px
+    classDef box fill:#ef47431a,stroke:#ef4743,stroke-width:1.5px
+    classDef ai fill:#bf5af21a,stroke:#bf5af2,stroke-width:1.5px,stroke-dasharray:5\,4
+    classDef ext fill:#8b949e14,stroke:#8b949e,stroke-width:1px,stroke-dasharray:4\,3
+    classDef hot stroke:#ffa116,stroke-width:2.5px
+    classDef mem stroke:#2cbb5d,stroke-width:2px
+    classDef cool stroke:#0a84ff,stroke-width:2px
+    class A client
+    class B,C,D core
+    class E,F learn
+    class a1,a2,a3,a4 hot
+    class m1,m2,m3 mem
 ```
+
+<sub>🟧 Animated orange arrows: the feedback loop on every submission, in seconds. 🟩 Green: the memory loop across missions.</sub>
 
 ---
 
@@ -169,12 +195,41 @@ Design and research evidence: [MENTOR_ENGINE.md §10](docs/MENTOR_ENGINE.md#10-l
 </table>
 
 ```mermaid
-flowchart LR
-    LC["leetcode.com/problems/…"] -- "read-only judge observer<br/>(page-hook → relay)" --> SW["Service worker<br/>validates · de-duplicates · Auto-log"]
-    LC -- "problem + editor<br/>(on request only)" --> P["Side panel<br/>chat · hints · review · progress"]
-    P -- "Bearer extension token" --> API["CodeQuest API<br/>rules → deterministic notes → guarded AI"]
-    SW -- "POST /api/ext/sync" --> API
-    API --> MM[("Same Mistake Memory<br/>as the web app")]
+flowchart TB
+    W["🖥️ <b>CodeQuest web app</b><br/>Settings → pairing code"]
+    LC["🟧 <b>leetcode.com/problems/…</b><br/>problem · editor · Submit"]
+    SW["⚙️ <b>Service worker</b><br/>sees verdicts · de-duplicates · Auto-log"]
+    P["🧩 <b>Side panel</b><br/>chat · hints · review · progress"]
+    API["🛡️ <b>CodeQuest API</b><br/>rules → deterministic notes → guarded AI"]
+    MM[("🧠 <b>Mistake Memory</b><br/>shared with the web app")]
+    W -.->|"6-character code, once"| P
+    LC m1@-->|"Submit result"| SW
+    LC -.->|"problem + code, on request"| P
+    P a1@==>|"POST /api/ext/chat"| API
+    API a2@==>|"labelled reply, never code"| P
+    SW m2@-->|"POST /api/ext/sync"| MM
+    API m3@--> MM
+    a1@{ animation: fast }
+    a2@{ animation: fast }
+    m1@{ animation: slow }
+    m2@{ animation: slow }
+    m3@{ animation: slow }
+    classDef zone fill:#8b949e0f,stroke:#8b949e66,stroke-width:1px,stroke-dasharray:6\,4
+    classDef client fill:#0a84ff1f,stroke:#0a84ff,stroke-width:1.5px
+    classDef core fill:#ffa1161f,stroke:#ffa116,stroke-width:1.5px
+    classDef learn fill:#2cbb5d1f,stroke:#2cbb5d,stroke-width:1.5px
+    classDef box fill:#ef47431a,stroke:#ef4743,stroke-width:1.5px
+    classDef ai fill:#bf5af21a,stroke:#bf5af2,stroke-width:1.5px,stroke-dasharray:5\,4
+    classDef ext fill:#8b949e14,stroke:#8b949e,stroke-width:1px,stroke-dasharray:4\,3
+    classDef hot stroke:#ffa116,stroke-width:2.5px
+    classDef mem stroke:#2cbb5d,stroke-width:2px
+    classDef cool stroke:#0a84ff,stroke-width:2px
+    class W,SW,P client
+    class LC ext
+    class API core
+    class MM learn
+    class a1,a2 hot
+    class m1,m2,m3 mem
 ```
 
 ### Install the Companion
@@ -252,36 +307,138 @@ Full script with voice-over and fallbacks: [`docs/pitch/demo_script.md`](docs/pi
 
 ## Architecture
 
+### Level 1 · System context
+
+Who talks to whom. Orange arrows show the request path; dotted lines are optional or read-only.
+
 ```mermaid
-flowchart TD
-    subgraph Clients
-        Web["Web app · Next.js 16 · React 19 · Monaco"]
-        Ext["CodeQuest Companion · Chrome/Edge MV3"]
+flowchart TB
+    L(["👩‍💻 <b>Learner</b>"])
+    subgraph C["Clients"]
+        W["🖥️ <b>Web app</b><br/>Next.js 16 · Vercel"]
+        X["🧩 <b>Companion</b><br/>Chrome / Edge side panel"]
     end
-    subgraph API["CodeQuest API · FastAPI · Python 3.12"]
-        Svc["Service: sessions · submissions queue · rate limits · per-learner locks"]
-        Judge["Judge: verdicts · shapes · explanations · mistake fusion"]
-        Mentor["Mentor: hint ladder · leak guard · counterexamples"]
-        Learner["Learner model: concept Elo · Mistake Memory · next-up"]
-        Signals["Signals: predict · pass review · journey · growth"]
-        Plan["Roadmap · typing drills · portfolio imports"]
-        AI["Guarded AI layer (optional): fact check · leak guard · budget · breaker"]
-        Store[("SQLite · WAL")]
+    A["⚙️ <b>CodeQuest API</b><br/>FastAPI · Python 3.12 · Render"]
+    S["🛡️ <b>Sandbox</b><br/>one locked-down run per test"]
+    D[("🗄️ <b>SQLite · WAL</b>")]
+    M["✨ <b>OpenAI / Gemini</b><br/>optional · rewording only"]
+    LC["leetcode.com"]
+    CF["Codeforces API"]
+    L e1@==> W
+    L e2@==> X
+    X <-.->|"reads page"| LC
+    W e3@==>|"REST · session token"| A
+    X e4@==>|"REST · extension token"| A
+    A e5@==>|"code + one test"| S
+    A e6@--> D
+    A -.->|"verified text"| M
+    A -.->|"public stats"| CF
+    e1@{ animation: fast }
+    e2@{ animation: fast }
+    e3@{ animation: fast }
+    e4@{ animation: fast }
+    e5@{ animation: fast }
+    e6@{ animation: slow }
+    classDef zone fill:#8b949e0f,stroke:#8b949e66,stroke-width:1px,stroke-dasharray:6\,4
+    classDef client fill:#0a84ff1f,stroke:#0a84ff,stroke-width:1.5px
+    classDef core fill:#ffa1161f,stroke:#ffa116,stroke-width:1.5px
+    classDef learn fill:#2cbb5d1f,stroke:#2cbb5d,stroke-width:1.5px
+    classDef box fill:#ef47431a,stroke:#ef4743,stroke-width:1.5px
+    classDef ai fill:#bf5af21a,stroke:#bf5af2,stroke-width:1.5px,stroke-dasharray:5\,4
+    classDef ext fill:#8b949e14,stroke:#8b949e,stroke-width:1px,stroke-dasharray:4\,3
+    classDef hot stroke:#ffa116,stroke-width:2.5px
+    classDef cool stroke:#0a84ff,stroke-width:2px
+    class L,W,X client
+    class A core
+    class S box
+    class D learn
+    class M ai
+    class LC,CF ext
+    class e1,e2,e3,e4,e5 hot
+    class e6 cool
+    class C zone
+```
+
+### Level 2 · Inside the API
+
+Every decision a learner sees comes from deterministic, unit-tested engines. AI may only reword text that has already been verified.
+
+```mermaid
+flowchart TB
+    S["⚙️ <b>HTTP + Service</b> · api.py · service.py<br/>validation · auth · submission queue · rate limits · per-learner locks"]
+    subgraph EN["Deterministic engines · unit-tested"]
+        J["🧪 <b>Judge</b><br/>verdicts<br/>explanations"]
+        MN["🪜 <b>Mentor</b><br/>hint ladder<br/>leak guard"]
+        LM["🧠 <b>Learner</b><br/>Elo · Mistake<br/>Memory"]
+        SG["🔍 <b>Signals</b><br/>predict<br/>pass review"]
+        PL["🗺️ <b>Plans</b><br/>roadmap<br/>typing · imports"]
     end
-    subgraph Sandbox
-        Docker["DockerRunner · one hardened container per test"]
-        Local["LocalRunner · constrained fallback"]
+    subgraph SB["🛡️ Sandbox · fresh process per test"]
+        DK["<b>DockerRunner</b><br/>hardened container"]
+        LO["<b>LocalRunner</b><br/>constrained fallback"]
     end
-    Web --> Svc
-    Ext --> Svc
-    Svc --> Judge --> Docker
-    Judge -.->|no Docker| Local
-    Svc --> Mentor --> AI
-    Mentor --> Docker
-    Svc --> Learner
-    Svc --> Signals --> Docker
-    Svc --> Plan --> AI
-    Svc --> Store
+    AI["✨ <b>Guarded AI</b> · optional<br/>fact check · leak guard · budget"]
+    DB[("🗄️ <b>SQLite · WAL</b>")]
+    S a1@==>|"202, judged in background"| J
+    J a2@==>|"4 tests in parallel"| DK
+    J -.->|"no Docker"| LO
+    J a3@==>|"mistakes"| LM
+    S c1@--> MN
+    MN c2@-->|"counterexamples"| DK
+    S --> SG
+    S --> PL
+    MN -.-> AI
+    PL -.-> AI
+    LM m1@--> DB
+    a1@{ animation: fast }
+    a2@{ animation: fast }
+    a3@{ animation: fast }
+    c1@{ animation: slow }
+    c2@{ animation: slow }
+    m1@{ animation: slow }
+    classDef zone fill:#8b949e0f,stroke:#8b949e66,stroke-width:1px,stroke-dasharray:6\,4
+    classDef client fill:#0a84ff1f,stroke:#0a84ff,stroke-width:1.5px
+    classDef core fill:#ffa1161f,stroke:#ffa116,stroke-width:1.5px
+    classDef learn fill:#2cbb5d1f,stroke:#2cbb5d,stroke-width:1.5px
+    classDef box fill:#ef47431a,stroke:#ef4743,stroke-width:1.5px
+    classDef ai fill:#bf5af21a,stroke:#bf5af2,stroke-width:1.5px,stroke-dasharray:5\,4
+    classDef ext fill:#8b949e14,stroke:#8b949e,stroke-width:1px,stroke-dasharray:4\,3
+    classDef hot stroke:#ffa116,stroke-width:2.5px
+    classDef mem stroke:#2cbb5d,stroke-width:2px
+    classDef cool stroke:#0a84ff,stroke-width:2px
+    class S,J,MN,SG,PL core
+    class LM,DB learn
+    class AI ai
+    class DK,LO box
+    class a1,a2,a3 hot
+    class c1,c2 cool
+    class m1 mem
+    class EN,SB zone
+```
+
+### Level 3 · Life of a submission
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as 🖥️ Web app
+    participant A as ⚙️ API
+    participant J as 🧪 Judge
+    participant S as 🛡️ Sandbox
+    W->>+A: POST /api/submissions
+    A-->>-W: 202 queued
+    A-)J: enqueue
+    J->>J: parse + detectors
+    par 4 tests at a time
+        J->>+S: code + 1 test
+        S-->>-J: 1 result record
+    end
+    J->>J: compare on host · explain
+    J->>A: verdicts + Mistake Memory
+    loop until done
+        W->>A: GET /submissions/{id}
+    end
+    A-->>W: test cards · hints
 ```
 
 A submission returns `202` immediately and is judged in a background pool; each test runs in its own sandbox (four in parallel). Learner return values are serialised to primitive JSON and **compared on the host**, so learner code can't fake a pass. Full design, data model and failure handling: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
