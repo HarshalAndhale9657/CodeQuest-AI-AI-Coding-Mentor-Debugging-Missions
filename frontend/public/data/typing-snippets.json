@@ -1,0 +1,194 @@
+[
+  {
+    "id": "typ_01",
+    "concept": "loops",
+    "title": "Iterate with Index using Enumerate",
+    "code": "items = [\"alpha\", \"beta\", \"gamma\"]\nfor index, value in enumerate(items):\n    prefix = f\"[{index + 1}]\"\n    print(prefix, value.upper())"
+  },
+  {
+    "id": "typ_02",
+    "concept": "loops",
+    "title": "Accumulate with Running Total",
+    "code": "def running_sum(numbers):\n    total = 0\n    history = []\n    for n in numbers:\n        total += n\n        history.append(total)\n    return history"
+  },
+  {
+    "id": "typ_03",
+    "concept": "loops",
+    "title": "Pairwise Consecutive Elements",
+    "code": "def pairwise_differences(nums):\n    diffs = []\n    for i in range(len(nums) - 1):\n        diffs.append(nums[i + 1] - nums[i])\n    return diffs"
+  },
+  {
+    "id": "typ_04",
+    "concept": "conditionals",
+    "title": "Clamp Value within Range",
+    "code": "def clamp(val, low, high):\n    if val < low:\n        return low\n    elif val > high:\n        return high\n    return val"
+  },
+  {
+    "id": "typ_05",
+    "concept": "conditionals",
+    "title": "Safe Dictionary Key Retrieval",
+    "code": "def get_user_role(profile):\n    if not profile or \"roles\" not in profile:\n        return \"guest\"\n    primary = profile[\"roles\"]\n    return primary[0] if primary else \"guest\""
+  },
+  {
+    "id": "typ_06",
+    "concept": "lists",
+    "title": "Chunk List into Equal Slices",
+    "code": "def chunk_list(items, size):\n    chunks = []\n    for i in range(0, len(items), size):\n        chunks.append(items[i:i + size])\n    return chunks"
+  },
+  {
+    "id": "typ_07",
+    "concept": "lists",
+    "title": "In-Place List Reversal with Pointers",
+    "code": "def reverse_array(arr):\n    left = 0\n    right = len(arr) - 1\n    while left < right:\n        arr[left], arr[right] = arr[right], arr[left]\n        left += 1\n        right -= 1"
+  },
+  {
+    "id": "typ_08",
+    "concept": "lists",
+    "title": "Filter and Transform Comprehension",
+    "code": "scores = [88, 42, 95, 70, 59, 100]\npassed = [s for s in scores if s >= 60]\nletter_grades = [\n    \"A\" if s >= 90 else \"B\" if s >= 80 else \"C\"\n    for s in passed\n]"
+  },
+  {
+    "id": "typ_09",
+    "concept": "dicts",
+    "title": "Group Items by Classification Key",
+    "code": "def group_by_parity(numbers):\n    groups = {\"even\": [], \"odd\": []}\n    for n in numbers:\n        key = \"even\" if n % 2 == 0 else \"odd\"\n        groups[key].append(n)\n    return groups"
+  },
+  {
+    "id": "typ_10",
+    "concept": "dicts",
+    "title": "Invert Key-Value Mapping",
+    "code": "def invert_dict(mapping):\n    reversed_map = {}\n    for k, v in mapping.items():\n        if v not in reversed_map:\n            reversed_map[v] = []\n        reversed_map[v].append(k)\n    return reversed_map"
+  },
+  {
+    "id": "typ_11",
+    "concept": "dicts",
+    "title": "Merge Two Metric Dictionaries",
+    "code": "def combine_metrics(base, delta):\n    combined = dict(base)\n    for metric, score in delta.items():\n        combined[metric] = combined.get(metric, 0) + score\n    return combined"
+  },
+  {
+    "id": "typ_12",
+    "concept": "strings",
+    "title": "Slugify String for URLs",
+    "code": "def slugify(title):\n    words = title.strip().lower().split()\n    clean = [w for w in words if w.isalnum()]\n    return \"-\".join(clean)"
+  },
+  {
+    "id": "typ_13",
+    "concept": "strings",
+    "title": "Run-Length Character Compression",
+    "code": "def compress_runs(s):\n    if not s:\n        return \"\"\n    result = []\n    count = 1\n    for i in range(1, len(s)):\n        if s[i] == s[i - 1]:\n            count += 1\n        else:\n            result.append(f\"{s[i - 1]}{count}\")\n            count = 1\n    result.append(f\"{s[-1]}{count}\")\n    return \"\".join(result)"
+  },
+  {
+    "id": "typ_14",
+    "concept": "strings",
+    "title": "Format Markdown Bullet List",
+    "code": "def format_checklist(title, tasks):\n    lines = [f\"### {title}\"]\n    for task in tasks:\n        status = \"[x]\" if task.get(\"done\") else \"[ ]\"\n        lines.append(f\"- {status} {task['name']}\")\n    return \"\\n\".join(lines)"
+  },
+  {
+    "id": "typ_15",
+    "concept": "sets",
+    "title": "Set Operations for Common Tags",
+    "code": "def common_and_unique(tags_a, tags_b):\n    set_a = set(tags_a)\n    set_b = set(tags_b)\n    shared = sorted(set_a & set_b)\n    distinct = sorted(set_a ^ set_b)\n    return {\"shared\": shared, \"distinct\": distinct}"
+  },
+  {
+    "id": "typ_16",
+    "concept": "two_pointers",
+    "title": "Check Pair Sum in Sorted List",
+    "code": "def has_pair_sum(nums, target):\n    i, j = 0, len(nums) - 1\n    while i < j:\n        current = nums[i] + nums[j]\n        if current == target:\n            return True\n        elif current < target:\n            i += 1\n        else:\n            j -= 1\n    return False"
+  },
+  {
+    "id": "typ_17",
+    "concept": "two_pointers",
+    "title": "Remove Duplicates In-Place",
+    "code": "def remove_duplicates_sorted(nums):\n    if not nums:\n        return 0\n    write = 1\n    for read in range(1, len(nums)):\n        if nums[read] != nums[read - 1]:\n            nums[write] = nums[read]\n            write += 1\n    return write"
+  },
+  {
+    "id": "typ_18",
+    "concept": "binary_search",
+    "title": "Binary Search Left Insertion Point",
+    "code": "def bisect_left(nums, target):\n    lo, hi = 0, len(nums)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid\n    return lo"
+  },
+  {
+    "id": "typ_19",
+    "concept": "binary_search",
+    "title": "Find Square Root Integer Bound",
+    "code": "def int_sqrt(n):\n    if n < 2:\n        return n\n    lo, hi = 1, n // 2\n    ans = 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if mid * mid <= n:\n            ans = mid\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return ans"
+  },
+  {
+    "id": "typ_20",
+    "concept": "sliding_window",
+    "title": "Fixed Length Average Window",
+    "code": "def moving_average(values, k):\n    if len(values) < k or k <= 0:\n        return []\n    window_sum = sum(values[:k])\n    averages = [window_sum / k]\n    for i in range(k, len(values)):\n        window_sum += values[i] - values[i - k]\n        averages.append(window_sum / k)\n    return averages"
+  },
+  {
+    "id": "typ_21",
+    "concept": "sliding_window",
+    "title": "Longest Substring Without Repeats",
+    "code": "def length_of_longest_substring(s):\n    seen = {}\n    start = 0\n    max_len = 0\n    for idx, ch in enumerate(s):\n        if ch in seen and seen[ch] >= start:\n            start = seen[ch] + 1\n        seen[ch] = idx\n        max_len = max(max_len, idx - start + 1)\n    return max_len"
+  },
+  {
+    "id": "typ_22",
+    "concept": "stack",
+    "title": "Evaluate Reverse Polish Notation",
+    "code": "def eval_rpn(tokens):\n    stack = []\n    for token in tokens:\n        if token in {\"+\", \"-\", \"*\"}:\n            b, a = stack.pop(), stack.pop()\n            if token == \"+\": stack.append(a + b)\n            elif token == \"-\": stack.append(a - b)\n            elif token == \"*\": stack.append(a * b)\n        else:\n            stack.append(int(token))\n    return stack[0]"
+  },
+  {
+    "id": "typ_23",
+    "concept": "stack",
+    "title": "Daily Temperatures Next Warmer Day",
+    "code": "def daily_temperatures(temps):\n    ans = [0] * len(temps)\n    stack = []\n    for i, t in enumerate(temps):\n        while stack and temps[stack[-1]] < t:\n            prev_i = stack.pop()\n            ans[prev_i] = i - prev_i\n        stack.append(i)\n    return ans"
+  },
+  {
+    "id": "typ_24",
+    "concept": "recursion",
+    "title": "Recursive Greatest Common Divisor",
+    "code": "def gcd(a, b):\n    if b == 0:\n        return abs(a)\n    return gcd(b, a % b)"
+  },
+  {
+    "id": "typ_25",
+    "concept": "recursion",
+    "title": "Recursive List Flattening",
+    "code": "def flatten_nested(items):\n    flat = []\n    for x in items:\n        if isinstance(x, list):\n            flat.extend(flatten_nested(x))\n        else:\n            flat.append(x)\n    return flat"
+  },
+  {
+    "id": "typ_26",
+    "concept": "exceptions",
+    "title": "Robust Float Conversion with Fallback",
+    "code": "def parse_float_safely(raw_str, default=0.0):\n    try:\n        cleaned = raw_str.strip().replace(\",\", \"\")\n        return float(cleaned)\n    except (ValueError, AttributeError):\n        return default"
+  },
+  {
+    "id": "typ_27",
+    "concept": "generators",
+    "title": "Infinite Batch Stepper Generator",
+    "code": "def batch_generator(dataset, batch_size):\n    for i in range(0, len(dataset), batch_size):\n        yield dataset[i:i + batch_size]"
+  },
+  {
+    "id": "typ_28",
+    "concept": "sorting",
+    "title": "Custom Key Multi-Attribute Sort",
+    "code": "def sort_students(roster):\n    # Sort descending by GPA, then ascending by surname\n    return sorted(\n        roster,\n        key=lambda s: (-s[\"gpa\"], s[\"last_name\"])\n    )"
+  },
+  {
+    "id": "typ_29",
+    "concept": "matrix",
+    "title": "Transpose 2D Matrix Grid",
+    "code": "def transpose(matrix):\n    if not matrix or not matrix[0]:\n        return []\n    rows, cols = len(matrix), len(matrix[0])\n    return [\n        [matrix[r][c] for r in range(rows)]\n        for c in range(cols)\n    ]"
+  },
+  {
+    "id": "typ_30",
+    "concept": "strings",
+    "title": "Caesar Cipher Rotator",
+    "code": "def rotate_char(c, shift):\n    if not c.isalpha():\n        return c\n    base = ord('a') if c.islower() else ord('A')\n    return chr((ord(c) - base + shift) % 26 + base)"
+  },
+  {
+    "id": "typ_31",
+    "concept": "lists",
+    "title": "Interleave Two Slices",
+    "code": "def interleave(first, second):\n    result = []\n    for a, b in zip(first, second):\n        result.append(a)\n        result.append(b)\n    rem = first[len(second):] or second[len(first):]\n    result.extend(rem)\n    return result"
+  },
+  {
+    "id": "typ_32",
+    "concept": "trees",
+    "title": "Count Leaves in Binary Node Dict",
+    "code": "def count_leaves(node):\n    if not node:\n        return 0\n    if not node.get(\"left\") and not node.get(\"right\"):\n        return 1\n    left_cnt = count_leaves(node.get(\"left\"))\n    right_cnt = count_leaves(node.get(\"right\"))\n    return left_cnt + right_cnt"
+  }
+]
