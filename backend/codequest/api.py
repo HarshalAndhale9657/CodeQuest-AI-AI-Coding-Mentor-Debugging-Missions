@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from codequest import arena
+from codequest import arena, extension
 from codequest.ai import load_dotenv
 from codequest.content import load_all
 from codequest.sandbox.runner import Runner, make_runner
@@ -48,6 +48,35 @@ class TypingIn(BaseModel):
     accuracy: float = Field(ge=0, le=1)
     duration_ms: int = Field(ge=500, le=3_600_000)
     errors: dict[str, int] = Field(default_factory=dict, max_length=200)
+
+Slug = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9-]+$")
+TagList = Field(default_factory=list, max_length=30)
+
+
+class PairIn(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
+class ExtAnalyzeIn(BaseModel):
+    code: str = Field(min_length=1, max_length=64 * 1024)
+    language: str = Field(default="python", max_length=20)
+
+
+class ExtApproachIn(BaseModel):
+    text: str = Field(max_length=2000)
+    tags: list[str] = TagList
+
+
+class ExtHintIn(BaseModel):
+    tags: list[str] = TagList
+    level: int = Field(default=1, ge=1, le=5)
+
+
+class ExtSyncIn(BaseModel):
+    slug: str = Slug
+    tags: list[str] = TagList
+    verdict: Literal["accepted", "wrong_answer", "runtime_error", "time_limit", "other"]
+    code: str = Field(default="", max_length=64 * 1024)
 
 
 class AISettingsIn(BaseModel):
@@ -79,8 +108,9 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
 
     app = FastAPI(title="CodeQuest AI", version="0.1.0", lifespan=lifespan)
     origins = [o.strip() for o in os.environ.get("CQ_ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
-    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False,
-                       allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"])
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_origin_regex=r"^chrome-extension://[a-p]{32}$",
+                       allow_credentials=False, allow_methods=["GET", "POST"],
+                       allow_headers=["Authorization", "Content-Type"])
 
     @app.exception_handler(ServiceError)
     async def service_error(_: Request, exc: ServiceError) -> JSONResponse:
@@ -147,6 +177,37 @@ def create_app(service: CodeQuestService | None = None) -> FastAPI:
     @app.post("/api/settings/ai")
     def set_ai(body: AISettingsIn, user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
         return s.ai.set_enabled(body.enabled)
+
+    def ext_user(authorization: str | None = Header(default=None),
+                 s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        token = authorization.removeprefix("Bearer ").strip() if authorization else None
+        return s.ext_user(token)
+
+    @app.post("/api/ext/pairing-code")
+    def pairing_code(user=Depends(current_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.create_pairing_code(user)
+
+    @app.post("/api/ext/pair")
+    def pair(body: PairIn, s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.pair_extension(body.code)
+
+    @app.post("/api/ext/analyze")
+    def ext_analyze(body: ExtAnalyzeIn, user=Depends(ext_user)) -> dict[str, Any]:
+        if not body.language.lower().startswith("python"):
+            raise ServiceError(400, "Code analysis currently supports Python only.")
+        return extension.analyze(body.code)
+
+    @app.post("/api/ext/approach")
+    def ext_approach(body: ExtApproachIn, user=Depends(ext_user)) -> dict[str, Any]:
+        return extension.check_approach(body.text, body.tags)
+
+    @app.post("/api/ext/hint")
+    def ext_hint(body: ExtHintIn, user=Depends(ext_user)) -> dict[str, Any]:
+        return extension.hint(body.tags, body.level)
+
+    @app.post("/api/ext/sync")
+    def ext_sync(body: ExtSyncIn, user=Depends(ext_user), s: CodeQuestService = Depends(svc)) -> dict[str, Any]:
+        return s.ext_sync(user, body.slug, body.tags, body.verdict, body.code)
 
     @app.get("/api/arena/attacks")
     def attacks() -> list[dict[str, Any]]:

@@ -64,7 +64,20 @@ CREATE TABLE IF NOT EXISTS typing_results (
     created REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS typing_user ON typing_results(user_id, created);
+
+CREATE TABLE IF NOT EXISTS pairing_codes (
+    code TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ext_tokens (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires REAL NOT NULL
+);
 """
+
+PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I
 
 
 class Store:
@@ -205,3 +218,30 @@ class Store:
         if not row or not row["runs"]:
             return None
         return {"best_cpm": round(row["best_cpm"], 1), "accuracy": round(row["accuracy"], 3), "runs": row["runs"]}
+
+    # ------------------------------------------------------------------ extension pairing
+    def create_pairing_code(self, user_id: str, ttl_s: float = 600) -> str:
+        code = "".join(secrets.choice(PAIRING_ALPHABET) for _ in range(6))
+        with self._lock:
+            self._db.execute("DELETE FROM pairing_codes WHERE user_id = ? OR expires < ?", (user_id, time.time()))
+            self._db.execute("INSERT INTO pairing_codes (code, user_id, expires) VALUES (?, ?, ?)",
+                             (code, user_id, time.time() + ttl_s))
+        return code
+
+    def redeem_pairing_code(self, code: str, ttl_s: float = 7 * 24 * 3600) -> dict[str, Any] | None:
+        """Single-use: a valid code is deleted and exchanged for an extension token."""
+        with self._lock:
+            row = self._db.execute("SELECT * FROM pairing_codes WHERE code = ? AND expires >= ?",
+                                   (code.strip().upper(), time.time())).fetchone()
+            if row is None:
+                return None
+            self._db.execute("DELETE FROM pairing_codes WHERE code = ?", (row["code"],))
+            token = secrets.token_urlsafe(32)
+            self._db.execute("INSERT INTO ext_tokens (token, user_id, expires) VALUES (?, ?, ?)",
+                             (token, row["user_id"], time.time() + ttl_s))
+        user = self._one("SELECT * FROM users WHERE id = ?", (row["user_id"],))
+        return {"token": token, "user": user}
+
+    def user_by_ext_token(self, token: str) -> dict[str, Any] | None:
+        return self._one("SELECT u.* FROM ext_tokens e JOIN users u ON u.id = e.user_id "
+                         "WHERE e.token = ? AND e.expires >= ?", (token, time.time()))

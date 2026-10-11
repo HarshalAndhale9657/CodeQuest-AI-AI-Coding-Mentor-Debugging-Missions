@@ -4,6 +4,8 @@ The Docker runner adds the OS-level boundary (no network namespace, read-only FS
 memory and pid limits); these tests verify the verdicts the learner sees.
 """
 
+import os
+
 import pytest
 
 from codequest.judge import judge
@@ -26,6 +28,9 @@ ATTACKS = {
     "memory_bomb": "def total(nums):\n    x = [0] * (10 ** 10)\n    return 0\n",
     "recursion": "def total(nums):\n    return total(nums)\n",
 }
+# These APIs don't exist on Windows, so there the attack dies with AttributeError before the
+# tripwire is reached. Still contained; on POSIX (and in the Docker runner) they must be "blocked".
+POSIX_ONLY = {"fork", "kill_group", "ctypes"}
 BLOCKED = {"read_file", "read_env_file", "network", "socket", "subprocess", "os_system", "write_file",
            "list_dirs", "kill_group", "fork", "ctypes"}
 
@@ -36,7 +41,10 @@ def test_attack_is_contained(challenges, runner, name):
     assert not any(o.status == "passed" for o in result.outcomes if o.expected not in (0,))
     statuses = {o.status for o in result.outcomes}
     assert statuses <= {"runtime_error", "timeout", "wrong_output", "passed"}
-    if name in BLOCKED:
+    if name in BLOCKED and name in POSIX_ONLY and os.name == "nt" and not runner.is_sandboxed:
+        first = result.outcomes[0]
+        assert first.status == "runtime_error" and first.exc_type == "AttributeError", (name, first.exc_type)
+    elif name in BLOCKED:
         first = result.outcomes[0]
         assert first.status == "runtime_error" and first.subtype == "blocked", (name, first.exc_type, first.exc_message)
     if name in {"infinite_loop", "sleep"}:

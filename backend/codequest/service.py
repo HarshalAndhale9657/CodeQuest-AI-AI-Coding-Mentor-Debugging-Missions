@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from codequest.analysis.detectors import Finding
+from codequest import extension
 from codequest.analysis.probe import Counterexample, find_counterexample
 from codequest.content import Challenge, public_challenge
 from codequest.hints import LadderState, code_hash, gate, leak_check, max_level, safe_hint
@@ -320,6 +321,36 @@ class CodeQuestService:
         self.store.add_typing_result(user["id"], body["snippet_id"], body.get("concept"), body["cpm"],
                                      body["accuracy"], body["duration_ms"], body.get("errors", {}))
         return self.store.typing_summary(user["id"]) or {}
+
+    # ------------------------------------------------------------------ LeetCode Companion
+    def create_pairing_code(self, user: dict[str, Any]) -> dict[str, Any]:
+        return {"code": self.store.create_pairing_code(user["id"]), "expires_in_s": 600}
+
+    def pair_extension(self, code: str) -> dict[str, Any]:
+        paired = self.store.redeem_pairing_code(code)
+        if paired is None or paired["user"] is None:
+            raise ServiceError(400, "That pairing code is invalid or has expired. Get a new one from CodeQuest.")
+        return {"token": paired["token"], "user": {"id": paired["user"]["id"], "name": paired["user"]["name"]}}
+
+    def ext_user(self, token: str | None) -> dict[str, Any]:
+        user = self.store.user_by_ext_token(token) if token else None
+        if user is None:
+            raise ServiceError(401, "The extension is not connected. Pair it with a code from CodeQuest.")
+        return user
+
+    def ext_sync(self, user: dict[str, Any], slug: str, tags: list[str], verdict: str, code: str) -> dict[str, Any]:
+        """Record a LeetCode attempt. Mistakes count only when a static finding meets a failed verdict."""
+        analysis = extension.analyze(code)
+        keys = sorted({f["key"] for f in analysis["findings"]}) if verdict != "accepted" else []
+        with self._user_locks[user["id"]]:
+            fresh = self.store.user_by_token(user["token"]) or user
+            state = self._state(fresh)
+            start_attempt(state)
+            newly = record_mistakes(state, keys)
+            self.store.save_state(user["id"], state.to_dict())
+        return {"recorded_mistakes": keys, "newly_recurring": newly, "concepts": extension.concepts_for_tags(tags),
+                "slug": slug}
+
 
 # ---------------------------------------------------------------------- serialisation helpers
 

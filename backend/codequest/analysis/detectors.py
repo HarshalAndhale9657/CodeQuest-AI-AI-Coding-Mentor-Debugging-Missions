@@ -241,20 +241,24 @@ def _mutated(body: list[ast.stmt], names: set[str]) -> bool:
 
 
 def detect_bad_initial_value(fn: ast.FunctionDef) -> list[Finding]:
+    """`best = 0` followed by `if x > best: best = x` (a best-so-far that can't handle all-negative input)."""
     zero_init = {
         t.id: n.lineno for n in fn.body if isinstance(n, ast.Assign)
-        and isinstance(n.value, ast.Constant) and n.value.value == 0 and not isinstance(n.value.value, bool)
+        and isinstance(n.value, ast.Constant) and type(n.value.value) is int and n.value.value == 0
         for t in n.targets if isinstance(t, ast.Name)
     }
-    found = []
     for node in ast.walk(fn):
-        if isinstance(node, ast.Compare) and len(node.ops) == 1 and isinstance(node.ops[0], (ast.Gt, ast.Lt)):
-            right = node.comparators[0]
-            if isinstance(right, ast.Name) and right.id in zero_init and isinstance(node.left, ast.Name):
-                found.append(Finding("bad_initial_value", zero_init[right.id],
-                                     f"`{right.id}` starts at 0, which is wrong if every value is negative (or positive)."))
-                break
-    return found
+        if not (isinstance(node, ast.If) and isinstance(node.test, ast.Compare) and len(node.test.ops) == 1
+                and isinstance(node.test.ops[0], (ast.Gt, ast.Lt, ast.GtE, ast.LtE))):
+            continue
+        sides = (node.test.left, node.test.comparators[0])
+        assigned_in_body = _assigned_names(node.body)
+        for this, other in (sides, sides[::-1]):
+            if (isinstance(this, ast.Name) and this.id in zero_init and this.id in assigned_in_body
+                    and not isinstance(other, ast.Constant) and not _is_len_call(other)):
+                return [Finding("bad_initial_value", zero_init[this.id],
+                                f"`{this.id}` starts at 0, which is wrong if every value is negative (or positive).")]
+    return []
 
 
 DETECTORS = (
