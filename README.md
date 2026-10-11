@@ -384,27 +384,7 @@ Planning and research notes from the hackathon are kept in [`docs/pm/`](docs/pm/
 
 ---
 
-## Roadmap
 
-| Next | Status |
-|---|---|
-| Companion on the Chrome Web Store | Planned |
-| Hosted API on a Docker-capable VM, so the live demo uses the full sandbox | Planned |
-| Real accounts (sign-in, token rotation) and Postgres for multi-node deployments | Planned |
-| More languages through the same judge contract (JavaScript next) | Exploring |
-| In-browser execution (Pyodide) for instant visible-test runs | Exploring |
-
----
-
-## Team
-
-Built in a 3-person sprint for Vortexa Hackathon 2026.
-
-| Role | Ownership |
-|---|---|
-| **Tech lead** | Sandbox and Docker runner, judge, API, learner model, learning signals, AI layer, LeetCode Companion |
-| **Frontend and UX** | Next.js app, Monaco workspace, results board, quest map, roadmap, typing trainer, portfolio, design system |
-| **Content and pitch** | 20 missions, debug missions, typing corpus, demo script and pitch |
 
 ## License
 
