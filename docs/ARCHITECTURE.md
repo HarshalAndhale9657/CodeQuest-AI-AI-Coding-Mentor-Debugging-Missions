@@ -54,12 +54,17 @@ flowchart LR
 | Analysis | `backend/codequest/analysis/` | Static detectors (AST), wrong-answer shape classifier, plain-language explainer, counterexample probe |
 | Mentor | `backend/codequest/hints.py` | Four-level hint ladder, unlock gate, leak guard |
 | Learner model | `backend/codequest/learner.py` | Concept Elo, Mistake Memory, mastery bands, next-mission ranking |
+| Learning signals | `predict.py`, `journey.py`, `insights.py`, `analysis/rules.py` | Predict Before You Run, pass review (fragile passes, mission rules), Debug Journey, portfolio growth analytics ([MENTOR_ENGINE.md §10](MENTOR_ENGINE.md#10-learning-signals)) |
+| Comparison | `backend/codequest/compare.py` | Host-side decoding and comparison of learner values (never inside the sandbox) |
 | AI layer | `backend/codequest/ai.py` | Optional rewording of hint 1; shape check, fact check, leak guard, budget, cache, circuit breaker |
 | Companion | `backend/codequest/extension.py`, `companion_chat.py` | LeetCode tag→concept map, approach check, concept hints, guarded tutor chat |
 | Portfolio | `backend/codequest/portfolio.py` | Public profile; Codeforces and LeetCode imports mapped to the same concepts |
+| Roadmap | `backend/codequest/roadmap.py`, `content/roadmap/` | Deterministic week-by-week plan over a 25-topic prerequisite graph and a 184-problem LeetCode catalogue; optional guarded coach notes |
+| Syntax Warm-up | `backend/codequest/typing_drills.py`, `content/typing/` | Typing drills ranked by weak concepts and syntax slips; speed and accuracy scored on the server |
+| Demo seed | `backend/codequest/demo_seed.py`, `content/demo/priya.json` | Priya's judged history, copied into the store when a demo session starts; tests re-judge it so it can't drift |
 | Arena | `backend/codequest/arena.py` | Fixed list of hostile programs run through the real runner, for a live security demo |
 | Store | `backend/codequest/store.py` | SQLite in WAL mode, small JSON blobs per row |
-| Web app | `frontend/src/` | Landing, quest map, mission workspace, portfolio, arena, settings |
+| Web app | `frontend/src/` | Landing, quest map, mission workspace, onboarding, roadmap, typing trainer, portfolio, arena, settings |
 | Extension | `extension/` | Side panel tutor on LeetCode (see [EXTENSION.md](EXTENSION.md)) |
 
 ---
@@ -173,6 +178,7 @@ erDiagram
     users ||--o{ typing_results : records
     users ||--o{ pairing_codes : issues
     users ||--o{ ext_tokens : pairs
+    users ||--o| roadmaps : plans
     users {
         text id PK
         text token "web session"
@@ -214,6 +220,11 @@ erDiagram
         text token PK
         real expires "7 days"
     }
+    roadmaps {
+        text user_id PK
+        int version
+        json plan "weekly plan"
+    }
 ```
 
 A separate `kv` table persists the AI spend, so restarting the server can't reset the budget.
@@ -224,7 +235,7 @@ A separate `kv` table persists the AI spend, so restarting the server can't rese
 
 | Failure | Behaviour |
 |---|---|
-| Docker not installed or judge image missing | `CQ_RUNNER=auto` falls back to the constrained `LocalRunner`; `/api/health` reports `sandboxed: false` so it is never silent |
+| Docker not installed or judge image missing | `CQ_RUNNER=auto` falls back to the constrained `LocalRunner`; `/api/health` reports `sandboxed: false` so it is never silent. The hosted demo on Render runs this way on purpose (see [DEPLOYMENT.md §3](DEPLOYMENT.md#hosted-demo-render--vercel)) |
 | A sandbox hiccup while judging | Judging is pure, so the service retries once, then reports *"System error while judging. This is not your fault"* instead of a wrong verdict |
 | Server restarts mid-judge | Stale submissions are closed with a system error on the next start |
 | No AI key, AI switched off, budget spent, provider down, timeout, refusal | The deterministic text is shown. Three failures in a row open a 60-second circuit breaker per provider; OpenAI falls through to Gemini when both keys are set |

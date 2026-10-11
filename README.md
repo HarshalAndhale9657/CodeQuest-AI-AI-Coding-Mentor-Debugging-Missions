@@ -6,33 +6,45 @@
 
 **Vortexa Hackathon 2026 · Domain 5: AI-Powered Education & Learning Technology · Problem Statement E-02**
 
+[![Live demo](https://img.shields.io/badge/live%20demo-codequest--ai-F89F1B?logo=vercel&logoColor=white)](https://codequest-ai-blond.vercel.app)
+[![API](https://img.shields.io/badge/API-OpenAPI%20docs-009688?logo=fastapi&logoColor=white)](https://codequest-api-31eg.onrender.com/docs)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js 16](https://img.shields.io/badge/web-Next.js%2016-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Chrome MV3](https://img.shields.io/badge/extension-Chrome%20MV3-4285F4?logo=googlechrome&logoColor=white)](docs/EXTENSION.md)
-[![Tests](https://img.shields.io/badge/backend%20tests-188%20passing-2EA44F)](#testing-and-quality)
+[![Tests](https://img.shields.io/badge/backend%20tests-316%20passing-2EA44F)](#testing-and-quality)
 [![Sandbox](https://img.shields.io/badge/sandbox-Docker%20%C2%B7%20no%20network-F05032?logo=docker&logoColor=white)](docs/SECURITY.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Quick start](#quick-start) · [LeetCode Companion](#the-leetcode-companion) · [How it meets E-02](#how-codequest-meets-problem-statement-e-02) · [Architecture](docs/ARCHITECTURE.md) · [Docs](#documentation)
+**[Try it live](https://codequest-ai-blond.vercel.app)** · [Quick start](#quick-start) · [How it meets E-02](#how-codequest-meets-problem-statement-e-02) · [LeetCode Companion](#the-leetcode-companion) · [Architecture](docs/ARCHITECTURE.md) · [Docs](#documentation)
 
 </div>
-
-<!-- TODO before submission: add the live demo URL and the demo video link here. -->
 
 ---
 
 ## At a glance
 
-CodeQuest AI is a Python practice environment where **every failure teaches**. Learners solve tiered missions in a LeetCode-grade workspace; each test is judged separately inside a locked-down Docker sandbox; failures are explained in plain language with the learner's own variables; hints climb from *where to look* to *fill the blank* without ever revealing the solution; and a **Mistake Memory** notices the bugs a learner keeps making and rebuilds their next missions around them.
+CodeQuest AI is a Python practice environment where **every failure teaches**. Learners solve tiered missions in a LeetCode-style workspace. Each test is judged separately inside a locked-down sandbox, and failures are explained in plain language using the learner's own variables. Hints climb from *where to look* to *fill the blank* without ever revealing the solution. A **Mistake Memory** notices the bugs a learner keeps making and rebuilds their next missions around them.
 
 The same mentor follows the learner to **LeetCode** through the **CodeQuest Companion**, a browser side-panel tutor.
 
-| 20 | 4 | 4 | 8 / 8 | 188 | 0 |
+| 20 | 4 | 4 | 8 / 8 | 316 | 0 |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | missions across 5 tiers (15 build, 5 debug) | separate verdicts per test | hint levels, each more specific | hostile programs contained in the live Arena | backend tests passing | AI calls needed for any feature |
 
 > **Deterministic first, AI second.** Diagnosis, explanations, hint content, mistake detection, adaptation and skill tracking are all deterministic and unit-tested. AI may only *reword* text that has already been verified, behind leak guards and a hard budget, and every learner can switch it off without losing a single feature.
+
+---
+
+## Try it live
+
+| | Link |
+|---|---|
+| **Web app** | **https://codequest-ai-blond.vercel.app**: click **Try the demo as Priya**, or **Start my own quest** |
+| **API** | https://codequest-api-31eg.onrender.com/api/health · interactive docs at [`/docs`](https://codequest-api-31eg.onrender.com/docs) |
+| **Companion** | Load [`extension/`](extension/) unpacked ([four steps](#the-leetcode-companion)). It talks to the hosted API by default |
+
+> [!NOTE]
+> **The hosted API runs on a free Render instance.** After about 15 idle minutes it sleeps, so the first request can take up to a minute while it wakes up. Render can't start Docker containers, so the hosted judge uses the restricted local runner: audit-hook tripwire, resource limits and a scrubbed environment. `/api/health` reports this honestly as `"sandboxed": false`. All 8 Arena attacks are still contained there, but the full OS-level sandbox needs Docker. Run it locally ([Quick start](#quick-start)) or on a VM ([deployment guide](docs/DEPLOYMENT.md)) to see `"runner": "docker"`.
 
 ---
 
@@ -44,6 +56,7 @@ Beginners learn to program by writing code and reading what goes wrong, but the 
 - **Pass/fail judges don't say where to look**, and hidden tests are a black box.
 - **Full solutions arrive too early.** Copying from a chatbot gets code working but skips the debugging that builds skill.
 - **No tool remembers.** Every submission is judged in isolation, so the same off-by-one comes back mission after mission.
+- **A pass isn't proof of understanding.** Code can pass every test by luck, and a learner can pass without being able to trace their own code.
 - **Running unknown code is risky**: it must not read files, reach the network, or exhaust the machine.
 
 ## Our solution: a learning loop
@@ -59,6 +72,8 @@ flowchart LR
     F --> A
     B --> G["Skill map<br/>concept Elo · mastery bands"]
     G --> F
+    B --> H["Learning signals<br/>predict · pass review · debug journey"]
+    H --> G
 ```
 
 ---
@@ -71,14 +86,14 @@ Every requirement in the brief, how it is met, where it lives, and how it is ver
 |---|---|---|---|---|
 | R1 | Practice environment for **one language**, challenges at **increasing difficulty** | Python. 20 missions over tiers 1–5, from loops to binary search, sliding window, recursion and stacks; each tier maps to an Elo difficulty | `content/challenges/` | `test_tiers_and_debug_missions_cover_the_ladder` |
 | R2 | Each challenge has a **description, starter code, visible tests and hidden tests** | Schema-validated YAML: ≥ 3 visible and ≥ 4 hidden tests per mission, references that must pass every test, starters that must not | `content.py` | `test_missions_load`, `test_references_pass_all_tests`, `test_starter_code_does_not_already_pass` |
-| R3 | Execute submissions **only in a restricted environment** | One fresh Docker container per test: `--network none`, read-only root, non-root, all capabilities dropped, 256 MB memory, 32 PIDs, CPU and file limits. A constrained local runner is the labelled dev fallback | `sandbox/runner.py`, `sandbox/harness.py`, `runner/Dockerfile` | `test_sandbox.py` (19 tests), live **Sandbox Arena: 8/8 attacks contained** |
+| R3 | Execute submissions **only in a restricted environment** | One fresh Docker container per test: `--network none`, read-only root, non-root, all capabilities dropped, 256 MB memory, 32 PIDs, CPU and file limits. A constrained local runner is the labelled fallback | `sandbox/runner.py`, `sandbox/harness.py`, `runner/Dockerfile` | `test_sandbox.py` (19 tests), live **Sandbox Arena: 8/8 attacks contained** |
 | R4 | Report **each test separately**: passed, wrong output, runtime error, timeout | Each test runs in its own process and gets exactly one of the four verdicts, with subtypes (blocked, memory limit, syntax, output limit) | `judge.py` | `test_judge.py` |
-| R5 | **Never reveal hidden tests** | Hidden outcomes carry only index, verdict and a coarse category. Inputs, outputs, messages and locals are never captured or are erased before storage. Counterexamples exclude every test input | `judge.TestOutcome.public`, `probe.py` | `test_public_view_has_no_secrets`, `test_judge.py` |
+| R5 | **Never reveal hidden tests** | Hidden outcomes carry only index, verdict and a coarse category. Inputs, outputs, messages and locals are never captured or are erased before storage. Counterexamples and prediction prompts exclude every test input | `judge.TestOutcome.public`, `probe.py` | `test_public_view_has_no_secrets`, `test_prompts_never_reuse_a_test_input` |
 | R6 | **Explain failures in plain language** | Deterministic templates: what happened → where → evidence (the learner's variables at the crash) → a guiding question. Wrong answers are classified by *shape* ("missing the last element", "printed instead of returned") | `analysis/explain.py`, `analysis/shape.py` | `test_judge.py`, `test_mentor.py` |
 | R7 | **Progressive hints**, each more specific, **none revealing the solution, including AI hints** | Four-level ladder (Where → What with a generated counterexample → Teach on a different example → the learner's own line with one blank). Unlocks need a changed resubmission or a 45 s cooldown. A **leak guard** checks the union of all hints against every reference solution; AI may reword only hint 1 and must pass the same guard | `hints.py`, `ai.py` | `test_mentor.py` (25), `test_ai.py` (17) |
 | R8 | **Detect recurring mistakes** (off-by-one, empty input, …) | 8 AST detectors plus syntax classes. A mistake is recorded only when static and runtime evidence agree. Decaying memory: recurring when strength ≥ 1.5 and seen in 2 of the last 5 attempts | `analysis/detectors.py`, `judge.fuse_mistakes`, `learner.py` | `test_judge.py`, `test_mentor.py` |
 | R9 | **Adapt future challenges** to those mistakes | A matching debug mission is assigned, next missions are re-ranked toward the trap, and a pre-flight check is added before the next submit | `service._adaptation`, `learner.next_up` | `test_api.py`, `test_mentor.py` |
-| R10 | **Track demonstrated skills by concept** | Elo per concept (primary 0.7 / secondary 0.3), credited by hints used; mastery requires predicted success ≥ 70 % **and** 2 verified solves | `learner.py` | `test_mentor.py` |
+| R10 | **Track demonstrated skills by concept** | Elo per concept (primary 0.7 / secondary 0.3), credited by hints used; mastery requires predicted success ≥ 70 % **and** 2 verified solves. A fragile pass (one that fails a search beyond the tests) holds back half its credit | `learner.py`, `analysis/probe.py` | `test_mentor.py`, `test_signals_api.py` |
 
 Details: [Mentor Engine](docs/MENTOR_ENGINE.md) · [Security Model](docs/SECURITY.md).
 
@@ -86,17 +101,31 @@ Details: [Mentor Engine](docs/MENTOR_ENGINE.md) · [Security Model](docs/SECURIT
 
 ## Beyond the brief
 
+### Learning signals: more than pass/fail
+
+| Signal | What it measures |
+|---|---|
+| **Predict Before You Run** | Before the first submit, the learner predicts what *their own* code returns for one small input that is never a test. Prediction vs. actual vs. correct gives *aligned*, *slip*, *misconception*, *lucky* or *lost*. This separates "knew the answer" from "can read my own code" |
+| **Pass review** | After every pass, a bounded search runs inputs beyond the tests. A **fragile pass** (e.g. counting brackets separately passes all 8 tests but accepts `"([)]"`) keeps the solve but holds back half its skill credit. Mission rules such as *no `max()`* are enforced on the AST |
+| **Debug Journey** | Replays every submission of an attempt as diffs with step labels (progress, regression, revert…), names the debugging style (methodical vs. trial and error), and reports an Error Quotient adapted from Jadud (2006) |
+| **Growth analytics** | The portfolio shows hint-free and first-try trends, a struggle map, mistake "boss" lanes, tracing accuracy by concept and robust-solve counts |
+
+Design and research evidence: [MENTOR_ENGINE.md §10](docs/MENTOR_ENGINE.md#10-learning-signals) · [learning-signals-evidence.md](docs/research/learning-signals-evidence.md).
+
+### More features
+
 | Feature | Why it matters |
 |---|---|
-| **[LeetCode Companion](#the-leetcode-companion)** | The same honest mentor inside LeetCode: problem-aware tutor chat, 3-level hints, approach checks, code review, auto-detected submissions that feed the same Mistake Memory |
+| **[LeetCode Companion](#the-leetcode-companion)** | The same honest mentor inside LeetCode: problem-aware tutor chat, 3-level hints, approach checks, code review, and auto-detected submissions that feed the same Mistake Memory |
 | **Counterexample finder** | Hint 2 shows the *smallest* input where the learner's code goes wrong, found by exhaustive enumeration in the sandbox, never a hidden test |
 | **Debug missions** | 5 hand-written broken programs with line budgets that train the skill the brief cares about most: reading and fixing code |
 | **Sandbox Arena** (`/arena`) | A live red-team demo: file theft, network calls, cloud-metadata access, shell, fork bomb, memory bomb, infinite loop and output flood, all contained in front of the judges |
 | **Guarded AI with a kill switch** | Optional rewording with a fact check, leak guard, persisted budget, circuit breaker and provider fallback. Settings shows provider, budget left, hints reworded and **leaks blocked** |
-| **Personal roadmap** (`/roadmap`) | A 2-minute onboarding (goal, deadline, hours a week, level; no personal data) builds a week-by-week plan over a 25-topic prerequisite graph, mixing CodeQuest missions with 184 hand-picked LeetCode problems (link-out only) at the right difficulty. Recurring mistakes put drills first, and the plan flags when it should be re-planned. OpenAI writes the coach notes from the plan's facts only, behind a guard (no code, no links, no invented numbers) |
-| **Syntax Warm-up** (`/typing`) | An animated, accuracy-first code-typing trainer: real Python picked for your weak concepts and recurring syntax slips, drills built from your own passing code, a personal pace caret, and speed computed on the server so results can't be faked |
+| **Personal roadmap** (`/onboarding`, `/roadmap`) | A 2-minute onboarding (goal, deadline, hours a week, level; no personal data) builds a week-by-week plan over a 25-topic prerequisite graph. It mixes CodeQuest missions with 184 hand-picked LeetCode problems (link-out only) at the right difficulty. Recurring mistakes put drills first. AI coach notes are written from the plan's facts only, behind a guard (no code, no links, no invented numbers) |
+| **Syntax Warm-up** (`/typing`) | An animated, accuracy-first code-typing trainer: real Python picked for weak concepts and recurring syntax slips, drills built from the learner's own passing code, a personal pace caret, and speed computed on the server so results can't be faked |
 | **Unified portfolio** (`/u/<handle>`) | A shareable profile that leads with skills **verified** by hidden tests, then imports public Codeforces and LeetCode stats mapped onto the same concepts |
-| **Seeded demo learner** | "Priya" is built through the real learner-model functions, so her next off-by-one turns recurring live on stage |
+| **Seeded demo learner** | "Priya" is built from real judged submissions (`content/demo/priya.json`, re-judged by tests), so her next off-by-one turns recurring live on stage |
+| **Your data** | Export everything stored about you as JSON, or erase your account (`GET /api/me/export`, `DELETE /api/me`) |
 | **Works offline** | Monaco is self-hosted, templates cover every feature, and the sandbox runs locally: the demo survives bad venue Wi-Fi |
 
 ---
@@ -126,9 +155,9 @@ Details: [Mentor Engine](docs/MENTOR_ENGINE.md) · [Security Model](docs/SECURIT
 1. Get the code: `git clone` this repo, or **Code → Download ZIP** and unzip.
 2. Open `chrome://extensions` (or `edge://extensions`) and switch on **Developer mode**.
 3. Click **Load unpacked** and pick the [`extension/`](extension/) folder.
-4. In CodeQuest, open **Settings → LeetCode Companion**, click **Generate pairing code**, then type the 6-character code into the panel.
+4. In the [CodeQuest web app](https://codequest-ai-blond.vercel.app), open **Settings → LeetCode Companion**, click **Generate pairing code**, then type the 6-character code into the panel.
 
-Open any `leetcode.com/problems/...` page and click the CodeQuest icon.
+Open any `leetcode.com/problems/...` page and click the CodeQuest icon. The panel uses the hosted API by default; for a local server, enter `http://localhost:8000` in the panel's **Settings**.
 
 📘 **[Full Companion guide](docs/EXTENSION.md)**: features, architecture, permissions, privacy, troubleshooting, testing and publishing.
 
@@ -151,14 +180,14 @@ flowchart LR
 
 | Time | Moment | What the judges see |
 |---|---|---|
-| 0:00 | **Failure that teaches** | *Try the demo as Priya* opens Class Average. Her buggy loop gets four different verdicts on four visible tests. The crash card says: *"On line 11 (`return total / count`) your code divided by zero. At that moment: `scores` = [], `total` = 0, `count` = 0 …"* Hidden tests show only a category |
+| 0:00 | **Failure that teaches** | *Try the demo as Priya* opens Class Average. Paste her buggy loop and submit: four visible tests, four different verdicts. The crash card says: *"On line 11 (`return total / count`) your code divided by zero. At that moment: `scores` = [], `total` = 0, `count` = 0 …"* Hidden tests show only a category |
 | 0:45 | **Hints without the answer** | Hint 1 points at lines; the cooldown blocks spamming; after one change, Hint 2 shows a minimal failing input. Every hint is leak-checked |
 | 1:30 | **Mistake Memory** | Her second off-by-one in a different mission turns *recurring*: a debug mission is assigned, next missions are re-ranked, a pre-flight check appears |
-| 2:15 | **Portfolio and Companion** | Verified skills plus imported Codeforces/LeetCode stats; then the Companion tutoring on a real LeetCode problem |
-| 2:55 | **Sandbox Arena** | Eight live attacks, all contained, runner: `docker` |
+| 2:15 | **Portfolio and Companion** | Verified skills, growth trends and imported Codeforces/LeetCode stats; then the Companion tutoring on a real LeetCode problem |
+| 2:55 | **Sandbox Arena** | Eight live attacks, all contained |
 | 3:35 | **AI off** | Priya switches AI off; hints and explanations are just as useful |
 
-Full script with voice-over and fallbacks: [`docs/pitch/demo_script.md`](docs/pitch/demo_script.md).
+Full script with voice-over and fallbacks: [`docs/pitch/demo_script.md`](docs/pitch/demo_script.md). Priya's buggy loop is `PRIYA_CLASS_AVERAGE` in [`backend/tests/conftest.py`](backend/tests/conftest.py).
 
 ---
 
@@ -175,12 +204,14 @@ flowchart TD
         Judge["Judge: verdicts · shapes · explanations · mistake fusion"]
         Mentor["Mentor: hint ladder · leak guard · counterexamples"]
         Learner["Learner model: concept Elo · Mistake Memory · next-up"]
+        Signals["Signals: predict · pass review · journey · growth"]
+        Plan["Roadmap · typing drills · portfolio imports"]
         AI["Guarded AI layer (optional): fact check · leak guard · budget · breaker"]
         Store[("SQLite · WAL")]
     end
     subgraph Sandbox
         Docker["DockerRunner · one hardened container per test"]
-        Local["LocalRunner · constrained dev fallback"]
+        Local["LocalRunner · constrained fallback"]
     end
     Web --> Svc
     Ext --> Svc
@@ -189,10 +220,12 @@ flowchart TD
     Svc --> Mentor --> AI
     Mentor --> Docker
     Svc --> Learner
+    Svc --> Signals --> Docker
+    Svc --> Plan --> AI
     Svc --> Store
 ```
 
-A submission returns `202` immediately and is judged in a background pool; each test runs in its own sandbox (four in parallel); learner return values are serialised to primitive JSON and **compared on the host**, so learner code can't fake a pass. Full design, data model and failure handling: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+A submission returns `202` immediately and is judged in a background pool; each test runs in its own sandbox (four in parallel). Learner return values are serialised to primitive JSON and **compared on the host**, so learner code can't fake a pass. Full design, data model and failure handling: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ### Tech stack
 
@@ -203,7 +236,8 @@ A submission returns `202` immediately and is judged in a background pool; each 
 | Sandbox | Docker (optional gVisor), hardened per-test containers |
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, TanStack Query, Monaco Editor, Motion |
 | Extension | Chrome Extensions Manifest V3: side panel, service worker, MAIN/ISOLATED content scripts |
-| AI (optional) | OpenAI `gpt-4.1-nano` (hint wording), `gpt-4.1-mini` (Companion tutor), Gemini Flash-Lite fallback, all via standard-library HTTP |
+| AI (optional) | OpenAI `gpt-4.1-nano` (hint wording), `gpt-4.1-mini` (Companion tutor, roadmap notes), Gemini Flash-Lite fallback, all via standard-library HTTP |
+| Hosting | Web on Vercel, API on Render ([`render.yaml`](render.yaml)) |
 
 ---
 
@@ -235,13 +269,13 @@ python -m uvicorn codequest.api:app --reload --port 8000
 
 ```bash
 cd frontend
-npm install
+npm install                              # also self-hosts Monaco under public/monaco
 npm run dev
 ```
 
-**4. Load the Companion**: see [the four steps above](#the-leetcode-companion).
+**4. Load the Companion**: see [the four steps above](#the-leetcode-companion), then set the panel's server to `http://localhost:8000`.
 
-Open http://localhost:3000 and click **Try the demo as Priya**, or start as a guest. Confirm the sandbox with `curl http://localhost:8000/api/health` → `"runner": "docker", "sandboxed": true`.
+Open http://localhost:3000 and click **Try the demo as Priya**, or start your own quest. Confirm the sandbox with `curl http://localhost:8000/api/health` → `"runner": "docker", "sandboxed": true`.
 
 Configuration reference and production deployment: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
@@ -250,23 +284,31 @@ Configuration reference and production deployment: **[docs/DEPLOYMENT.md](docs/D
 ## Testing and quality
 
 ```bash
-cd backend && python -m pytest -q             # 188 tests
-cd frontend && npm run typecheck && npm run lint
+cd backend && python -m pytest -q                       # 316 tests
+cd frontend && npm run typecheck && npm run lint && npm run build
 ```
 
 | Suite | Tests | Covers |
 |---|---:|---|
 | `test_content.py` | 63 | Every mission validates; references pass all tests; starters fail; counterexamples never flag a reference and always expose debug starters; public view has no secrets |
-| `test_mentor.py` | 25 | Counterexamples (minimal, exclude every test input, survive infinite loops); ladder monotonicity; H4 blanks the learner's own line; unlock gate; leak guard incl. Unicode tricks; authored lessons vs. every mission; Mistake Memory recurring/beaten; Elo; adaptive next-up |
-| `test_companion_chat.py` | 21 | Answer-seeking refused without a model call; deterministic modes; grounding; one strict retry on code; rules fallback on failure; budget and preference gating; endpoint auth and rate limit |
+| `test_predict.py` | 39 | Answer parsing (Python and JSON literals); every cell of the predict matrix; prompts never reuse a test input and probe the mission's trap; a misconception never reveals the answer |
+| `test_mentor.py` | 25 | Counterexamples (minimal, exclude every test input, survive infinite loops); ladder monotonicity; H4 blanks the learner's own line; unlock gate; leak guard incl. Unicode tricks; Mistake Memory recurring/beaten; Elo; adaptive next-up |
+| `test_companion_chat.py` | 22 | Answer-seeking refused without a model call; deterministic modes; grounding; one strict retry on code; rules fallback on failure or quota; budget and preference gating; endpoint auth and rate limit |
+| `test_roadmap.py` | 21 | Catalogue covers every topic; prerequisite order; deterministic plans that fit the week; deadlines compress then trim; recurring mistakes first; coach notes rejected for code, links or invented numbers; export and delete account |
 | `test_sandbox.py` | 19 | Parametrised attacks (files, network, processes, memory, loops, output) contained; verdict forgery and fake result markers rejected; hard exits |
-| `test_ai.py` | 17 | Off without providers; caching; model sees only the note; shape, inline-code and fact checks; leak guard end to end; provider fall-through; circuit breaker; budget cap, reservation and persistence; only H1 is AI-worded, per learner |
-| `test_portfolio.py` | 14 | Public portfolio; Codeforces import and cache; failures recorded, last good snapshot kept; handle validation; typing results; mistakes timeline; tag mapping |
-| `test_extension.py` | 13 | Detectors inside class methods; pairwise loops not flagged; syntax errors; approach check; progressive concept hints; pairing and extension endpoints; sync feeds Mistake Memory |
-| `test_judge.py` | 9 | All four verdicts from one submission; mistake fusion; specific visible explanations; hidden tests never leak; syntax errors; print vs return; bad initial value; base case; missing function |
-| `test_api.py` | 7 | Auth required; challenge view hides secrets; the full Priya demo flow over HTTP; rate limit; Arena accepts an index only; consistent seed; judge retry after a sandbox blip |
+| `test_signals_api.py` | 18 | One prediction per attempt; fragile passes reported after the verdict and holding back credit; mission rules; journey privacy; portfolio growth; the Priya seed tells one story everywhere |
+| `test_ai.py` | 17 | Off without providers; caching; model sees only the note; shape, inline-code and fact checks; leak guard end to end; provider fall-through; circuit breaker; budget cap, reservation and persistence |
+| `test_journey.py` | 14 | Steps classified by outcome and AST identity; diffs; debugging styles; Error Quotient as in Jadud; self-report agreement |
+| `test_portfolio.py` | 14 | Public portfolio; Codeforces import and cache; failures recorded, last good snapshot kept; handle validation; typing results; mistakes timeline |
+| `test_extension.py` | 13 | Detectors inside class methods; pairwise loops not flagged; approach check; progressive concept hints; pairing and extension endpoints; sync feeds Mistake Memory |
+| `test_insights.py` | 11 | Hint-free and first-try trends; struggle map; mistake lanes; robustness counts; old saved states still load |
+| `test_typing.py` | 10 | Corpus is typeable Python; speed computed on the server, impossible runs rejected; own code becomes a drill after a solve |
+| `test_judge.py` | 9 | All four verdicts from one submission; mistake fusion; hidden tests never leak; syntax errors; print vs return; base case; missing function |
+| `test_pass_review.py` | 9 | Fragile passes fail the search; correct solutions survive it; hangs count as counterexamples; forbidden calls reported with their line |
+| `test_api.py` | 7 | Auth required; challenge view hides secrets; the full Priya demo flow over HTTP; rate limit; Arena accepts an index only; judge retry after a sandbox blip |
+| `test_demo_seed.py` | 5 | Priya's fixture matches a fresh judge run, so the demo can never drift from what the judge really does |
 
-The extension has its own dev harnesses in [`extension-tests/`](extension-tests/): a fake LeetCode judge server, a 17-check pipeline test and a stubbed side-panel UI ([details](docs/EXTENSION.md#12-testing-the-extension)).
+**Extension:** two browser suites in [`extension-tests/`](extension-tests/), run against a fake LeetCode judge server: an automated **44-check side-panel suite** (pairing, hints, approach routing, code review, jailbreak refusal, HTML injection, submission cards, network failure and retry) and a **17-check submission pipeline** (hook → validator → service worker → API). [How to run them](docs/EXTENSION.md#12-testing-the-extension).
 
 ---
 
@@ -274,11 +316,11 @@ The extension has its own dev harnesses in [`extension-tests/`](extension-tests/
 
 | Threat | Control |
 |---|---|
-| Reading host files or secrets | Read-only root FS, no mounts, user `65534`, code on stdin; tripwire blocks `open` |
+| Reading host files or secrets | Read-only root FS, no mounts, user `65534`, code on stdin, scrubbed environment; tripwire blocks `open` |
 | Network and cloud-metadata access | `--network none`; tripwire blocks sockets |
 | Fork bombs, memory bombs, infinite loops, output floods | `--pids-limit 32`, `--memory 256m` (no swap), watchdog + host deadline, capped writers |
 | Faking a pass | Values serialised in the sandbox, compared on the host; only the last marked record is trusted |
-| Leaking hidden tests | Coarse category only; data never serialised; counterexamples exclude test inputs |
+| Leaking hidden tests | Coarse category only; data never serialised; counterexamples and prediction prompts exclude test inputs |
 | Leaking the solution | Union leak guard over every hint; AI sees only the note; chat refusals and no-code output guard |
 | Abuse and cost | Rate limits, 64 KiB code cap, persisted AI budget, per-learner AI switch |
 
@@ -290,27 +332,37 @@ Threat model, verified Arena results and known limitations: **[docs/SECURITY.md]
 
 ```
 .
-├── backend/                 FastAPI service (Python 3.12)
+├── backend/                  FastAPI service (Python 3.12)
 │   ├── codequest/
-│   │   ├── api.py           HTTP routes and validation
-│   │   ├── service.py       Use cases: submissions, hints, learner model, Companion
-│   │   ├── judge.py         Per-test verdicts, explanations, mistake fusion
-│   │   ├── hints.py         Hint ladder, unlock gate, leak guard
-│   │   ├── learner.py       Concept Elo, Mistake Memory, next-up ranking
-│   │   ├── ai.py            Optional guarded AI wording layer
-│   │   ├── companion_chat.py  LeetCode tutor: rules, deterministic notes, guarded model
-│   │   ├── extension.py     Tag→concept map, approach check, concept hints
-│   │   ├── portfolio.py     Public profile, Codeforces/LeetCode import
-│   │   ├── arena.py         Fixed red-team attacks
-│   │   ├── analysis/        detectors · shape · explain · probe (counterexamples)
-│   │   └── sandbox/         harness (runs inside) · runner (Docker / local)
-│   └── tests/               188 tests
-├── content/challenges/      20 missions (YAML)
-├── frontend/                Next.js web app (quest map, workspace, portfolio, arena, settings)
-├── extension/               CodeQuest Companion (Chrome/Edge MV3)
-├── extension-tests/         Dev harnesses for the extension
-├── runner/Dockerfile        Sandbox image
-└── docs/                    Architecture, mentor engine, security, API, extension, content, deployment
+│   │   ├── api.py            HTTP routes and validation (33 endpoints)
+│   │   ├── service.py        Use cases: submissions, hints, learner model, Companion
+│   │   ├── judge.py          Per-test verdicts, explanations, mistake fusion
+│   │   ├── hints.py          Hint ladder, unlock gate, leak guard
+│   │   ├── learner.py        Concept Elo, Mistake Memory, next-up ranking
+│   │   ├── predict.py        Predict Before You Run
+│   │   ├── journey.py        Debug Journey replay and Error Quotient
+│   │   ├── insights.py       Growth analytics for the portfolio
+│   │   ├── roadmap.py        Personal roadmap planner and guarded coach notes
+│   │   ├── typing_drills.py  Syntax Warm-up drills and server-side scoring
+│   │   ├── ai.py             Optional guarded AI wording layer
+│   │   ├── companion_chat.py LeetCode tutor: rules, deterministic notes, guarded model
+│   │   ├── extension.py      Tag→concept map, approach check, concept hints
+│   │   ├── portfolio.py      Public profile, Codeforces/LeetCode import
+│   │   ├── arena.py          Fixed red-team attacks
+│   │   ├── analysis/         detectors · shape · explain · probe · rules
+│   │   └── sandbox/          harness (runs inside) · runner (Docker / local)
+│   └── tests/                316 tests
+├── content/
+│   ├── challenges/           20 missions (YAML)
+│   ├── demo/priya.json       Priya's judged demo history
+│   ├── roadmap/              184-problem LeetCode catalogue
+│   └── typing/               32 typing snippets
+├── frontend/                 Next.js web app
+├── extension/                CodeQuest Companion (Chrome/Edge MV3)
+├── extension-tests/          Browser test suites for the extension
+├── runner/Dockerfile         Sandbox image
+├── render.yaml               Render blueprint for the hosted API
+└── docs/                     Architecture, mentor engine, security, API, extension, content, deployment
 ```
 
 ---
@@ -320,13 +372,15 @@ Threat model, verified Arena results and known limitations: **[docs/SECURITY.md]
 | Document | What's inside |
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, submission lifecycle, verdict mapping, disclosure policy, data model, resilience |
-| [MENTOR_ENGINE.md](docs/MENTOR_ENGINE.md) | Explanations, detectors, mistake fusion, hint ladder, leak guard, Mistake Memory, Elo, adaptation |
-| [EXTENSION.md](docs/EXTENSION.md) | The LeetCode Companion: install, pairing, usage, internals, permissions, privacy, troubleshooting, publishing |
+| [MENTOR_ENGINE.md](docs/MENTOR_ENGINE.md) | Explanations, detectors, mistake fusion, hint ladder, leak guard, Mistake Memory, Elo, adaptation, learning signals |
+| [EXTENSION.md](docs/EXTENSION.md) | The LeetCode Companion: install, pairing, usage, internals, permissions, privacy, troubleshooting, testing, publishing |
 | [SECURITY.md](docs/SECURITY.md) | Threat model, sandbox layers, Arena results, hidden-test secrecy, known limitations |
 | [API.md](docs/API.md) | Every endpoint with request and response shapes |
 | [CONTENT_GUIDE.md](docs/CONTENT_GUIDE.md) | Mission catalogue, YAML schema, authoring rules, validation |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Environment variables, local setup, production, pre-demo checklist |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Environment variables, local setup, hosted demo, production, pre-demo checklist |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and conventions |
+
+Planning and research notes from the hackathon are kept in [`docs/pm/`](docs/pm/) and [`docs/research/`](docs/research/).
 
 ---
 
@@ -334,7 +388,8 @@ Threat model, verified Arena results and known limitations: **[docs/SECURITY.md]
 
 | Next | Status |
 |---|---|
-| Companion on the Chrome Web Store, with the production server built in | Planned |
+| Companion on the Chrome Web Store | Planned |
+| Hosted API on a Docker-capable VM, so the live demo uses the full sandbox | Planned |
 | Real accounts (sign-in, token rotation) and Postgres for multi-node deployments | Planned |
 | More languages through the same judge contract (JavaScript next) | Exploring |
 | In-browser execution (Pyodide) for instant visible-test runs | Exploring |
@@ -347,8 +402,8 @@ Built in a 3-person sprint for Vortexa Hackathon 2026.
 
 | Role | Ownership |
 |---|---|
-| **Tech lead** | Sandbox and Docker runner, judge, API, learner model, AI layer, LeetCode Companion |
-| **Frontend and UX** | Next.js app, Monaco workspace, results board, quest map, portfolio, LeetCode-style design system |
+| **Tech lead** | Sandbox and Docker runner, judge, API, learner model, learning signals, AI layer, LeetCode Companion |
+| **Frontend and UX** | Next.js app, Monaco workspace, results board, quest map, roadmap, typing trainer, portfolio, design system |
 | **Content and pitch** | 20 missions, debug missions, typing corpus, demo script and pitch |
 
 ## License

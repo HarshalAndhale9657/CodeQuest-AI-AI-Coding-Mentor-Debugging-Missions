@@ -17,11 +17,12 @@ Follow the [Quick start](README.md#quick-start). In short: build the sandbox ima
 ## Before you open a pull request
 
 ```bash
-cd backend && python -m pytest -q                  # all 188+ tests must pass
+cd backend && python -m pytest -q                  # all 316 tests must pass
 cd frontend && npm run typecheck && npm run lint   # lint also checks design tokens
 ```
 
 - Add or update tests with every behaviour change. New missions must pass `tests/test_content.py`.
+- Changes to the extension should keep both browser suites in `extension-tests/` green ([how to run them](docs/EXTENSION.md#12-testing-the-extension)).
 - Never weaken the disclosure policy: hidden-test data must not reach any public view, explanation, hint or log.
 - Any new hint or tutor text must pass the leak guard (`hints.leak_check`) or the chat output guard (`companion_chat.reply_is_safe`).
 - Never put API keys in the frontend or the extension. Secrets live in `.env` (gitignored); keep `.env.example` in sync.

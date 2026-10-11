@@ -100,7 +100,9 @@ What it still enforces (the problem statement's "constrained local test runner")
 | Output caps and the tripwire | ✅ | ✅ |
 | `RLIMIT_CPU`, `RLIMIT_AS`, `RLIMIT_FSIZE` (1 MiB), `RLIMIT_NOFILE` (64), no core dumps, own session | ✅ | ❌ |
 
-**Deployments must use `CQ_RUNNER=docker`.** The local runner relies on the tripwire, which a determined attacker can bypass.
+**Deployments for real learners must use `CQ_RUNNER=docker`.** The local runner relies on the tripwire, which a determined attacker can bypass.
+
+The public hackathon demo is the one exception: Render's free tier can't start containers, so the hosted API runs the local runner and says so on `/api/health`. It holds only anonymous demo sessions, and its one secret (the AI key) is kept out of the learner process's environment. See [DEPLOYMENT.md](DEPLOYMENT.md#hosted-demo-render--vercel).
 
 ---
 
@@ -151,6 +153,7 @@ We prefer to state these plainly:
 - **Public portfolios are public by design.** `/api/portfolio/{handle}` needs no auth; handles are not secret.
 - **Rate limits are in-memory, per process.** Several API replicas would need a shared store (e.g. Redis).
 - **The tripwire is bypassable.** It is a UX layer. Only the Docker runner (optionally with gVisor) is a security boundary.
+- **The hosted demo is not Docker-sandboxed.** It runs the local runner on Render (above); run locally or on a Docker host to demonstrate the full sandbox.
 - **SQLite is single-node.** Fine for a classroom; a larger deployment would move to Postgres.
 - **AI providers see what they are sent.** With AI on, the Companion forwards the problem statement, the learner's code and messages to the model provider for that reply. Learners can switch AI off.
 

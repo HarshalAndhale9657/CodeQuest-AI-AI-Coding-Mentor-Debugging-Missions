@@ -70,7 +70,7 @@ If Docker Hub is unreachable (venue Wi-Fi), build from any local Python image: `
 
 ### API on a Linux VM
 
-The Docker runner launches containers, so the API needs a host where it can reach a Docker engine: a small VM (any cloud provider) is the simplest. Platforms that don't expose Docker to the app cannot run the sandbox and would silently fall back to the unsandboxed runner, which is not acceptable for public use.
+The Docker runner launches containers, so the API needs a host where it can reach a Docker engine: a small VM (any cloud provider) is the simplest. Platforms that don't expose Docker to the app cannot run the sandbox and fall back to the local runner, which is fine for a demo but not a security boundary for real learners (see [Hosted demo](#hosted-demo-render--vercel)).
 
 ```bash
 # on the VM (Ubuntu example)
@@ -95,6 +95,23 @@ cd backend && uvicorn codequest.api:app --host 127.0.0.1 --port 8000 --workers 1
 2. Add `NEXT_PUBLIC_API_URL=https://<your-api-host>`.
 3. Deploy, then add the Vercel URL to the API's `CQ_ALLOWED_ORIGINS`.
 
+### Hosted demo (Render + Vercel)
+
+The public demo runs as:
+
+| Piece | Where | Notes |
+|---|---|---|
+| Web app | https://codequest-ai-blond.vercel.app | Vercel project with root `frontend/` and `NEXT_PUBLIC_API_URL` set to the API below |
+| API | https://codequest-api-31eg.onrender.com | Render free web service from [`render.yaml`](../render.yaml); `autoDeploy: true`, so every push to `main` redeploys it |
+
+`render.yaml` installs only the four runtime dependencies, runs `uvicorn codequest.api:app` from `backend/`, sets `CQ_ALLOWED_ORIGINS` to the Vercel URL and keeps `OPENAI_API_KEY` as a dashboard secret (`sync: false`, never committed).
+
+What to expect from this setup:
+
+- **Cold starts.** A free instance sleeps after about 15 idle minutes; the first request then takes up to a minute.
+- **Local runner, by necessity.** Render can't start Docker containers from inside a service, so `CQ_RUNNER=local` and `/api/health` reports `"runner": "local-dev (not sandboxed)", "sandboxed": false`. Learner code still runs in a fresh `python -I -S` process per test with a scrubbed environment (the API key is not inherited), resource limits and the tripwire, and all 8 Arena attacks are contained. It is not an OS-level boundary, though: for real learners, run the API on a Docker host as above.
+- **Ephemeral data.** SQLite lives on the instance's disk, which resets on redeploy. Demo sessions are anonymous, and the Priya persona is re-seeded on every new session.
+
 ### Companion extension
 
 Learners set the API's HTTPS origin in the panel's **Settings** and grant the permission prompt. To ship a store build with the production server built in, follow [EXTENSION.md §13](EXTENSION.md#13-packaging-and-publishing).
@@ -103,8 +120,9 @@ Learners set the API's HTTPS origin in the panel's **Settings** and grant the pe
 
 ## 4. Pre-demo checklist
 
-- [ ] `GET /api/health` shows `"sandboxed": true` and `"missions": 20`
-- [ ] Arena: 8/8 attacks contained, runner shows `docker`
+- [ ] Hosted demo: open `https://codequest-api-31eg.onrender.com/api/health` a few minutes before presenting so the free instance is awake
+- [ ] Local demo: `GET /api/health` shows `"sandboxed": true` and `"missions": 20`
+- [ ] Arena: 8/8 attacks contained (runner shows `docker` on a Docker host)
 - [ ] **Try the demo as Priya** opens Class Average and the seeded profile (one prior off-by-one)
 - [ ] Settings shows the AI provider and budget left, and the AI switch works both ways
 - [ ] Companion: pairing code works, the panel loads a LeetCode problem, a hint and a code review return
