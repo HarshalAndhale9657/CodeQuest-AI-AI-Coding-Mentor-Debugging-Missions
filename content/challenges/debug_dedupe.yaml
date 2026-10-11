@@ -1,0 +1,41 @@
+id: debug_dedupe
+type: debug
+tier: 3
+title: "Debug Mission: Mutating While Iterating"
+concepts: {primary: lists, secondary: [loops]}
+traps: [mutate_while_iterating]
+function: dedupe
+max_changed_lines: 3
+description: |
+  This function tries to remove consecutive duplicates from a list, but it mutates the list
+  in-place during iteration, which throws off index tracking and skips elements!
+  Fix the function so it returns a new list containing elements with duplicates removed in encounter order.
+edge_cases:
+  - an empty list
+  - adjacent identical items
+  - no duplicates present
+starter_code: |
+  def dedupe(items):
+      for item in items:
+          if items.count(item) > 1:
+              items.remove(item)
+      return items
+tests:
+  - {id: v1, visibility: visible, args: [[1, 2, 2, 3]], expected: [1, 2, 3], tags: [typical]}
+  - {id: v2, visibility: visible, args: [[4, 4, 4, 4]], expected: [4], tags: [duplicates]}
+  - {id: v3, visibility: visible, args: [[]], expected: [], tags: [empty]}
+  - {id: h1, visibility: hidden, args: [[1, 1]], expected: [1], tags: [duplicates]}
+  - {id: h2, visibility: hidden, args: [[5]], expected: [5], tags: [single]}
+  - {id: h3, visibility: hidden, args: [[3, 1, 2]], expected: [3, 1, 2], tags: [typical]}
+  - {id: h4, visibility: hidden, args: [[-2, -2, 0, 1, 1]], expected: [-2, 0, 1], tags: [negative]}
+  - {id: h5, visibility: hidden, args: [[9, 9, 8, 8, 7, 7, 6, 6]], expected: [9, 8, 7, 6], tags: [large, duplicates]}
+references:
+  - |
+    def dedupe(items):
+        seen = set()
+        res = []
+        for x in items:
+            if x not in seen:
+                seen.add(x)
+                res.append(x)
+        return res

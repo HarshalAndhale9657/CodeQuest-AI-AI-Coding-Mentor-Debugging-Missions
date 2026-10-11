@@ -1,0 +1,47 @@
+id: debug_largest
+type: debug
+tier: 2
+title: "Debug Mission: The Negative Trap"
+concepts: {primary: loops, secondary: [conditionals]}
+traps: [bad_initial_value, empty_input]
+function: largest
+max_changed_lines: 3
+description: |
+  This function is supposed to return the maximum number in `nums`, or `None` if `nums` is empty.
+  However, it initializes the maximum to `0`, which gives wrong answers when all numbers are negative!
+  Fix the bug by changing at most 3 lines.
+edge_cases:
+  - an empty list
+  - a list where all values are negative
+  - a single element
+starter_code: |
+  def largest(nums):
+      if not nums:
+          return None
+      current_max = 0
+      for x in nums:
+          if x > current_max:
+              current_max = x
+      return current_max
+tests:
+  - {id: v1, visibility: visible, args: [[1, 3, 2]], expected: 3, tags: [typical]}
+  - {id: v2, visibility: visible, args: [[-5, -2, -9]], expected: -2, tags: [negative]}
+  - {id: v3, visibility: visible, args: [[]], expected: null, tags: [empty]}
+  - {id: h1, visibility: hidden, args: [[-100]], expected: -100, tags: [single, negative]}
+  - {id: h2, visibility: hidden, args: [[-1, 0, 1]], expected: 1, tags: [boundary]}
+  - {id: h3, visibility: hidden, args: [[-50, -20, -80, -10]], expected: -10, tags: [negative]}
+  - {id: h4, visibility: hidden, args: [[7, 7, 7]], expected: 7, tags: [duplicates]}
+  - {id: h5, visibility: hidden, args: [[-999, -888, -777, -666]], expected: -666, tags: [large, negative]}
+references:
+  - |
+    def largest(nums):
+        if not nums:
+            return None
+        current_max = nums[0]
+        for x in nums[1:]:
+            if x > current_max:
+                current_max = x
+        return current_max
+  - |
+    def largest(nums):
+        return max(nums) if nums else None

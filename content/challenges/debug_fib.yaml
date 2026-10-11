@@ -1,0 +1,46 @@
+id: debug_fib
+type: debug
+tier: 2
+title: "Debug Mission: The Infinite Recurrence"
+concepts: {primary: recursion, secondary: [base_case]}
+traps: [base_case]
+function: fib
+max_changed_lines: 3
+description: |
+  This recursive function computes the n-th Fibonacci number (where fib(0) = 0 and fib(1) = 1).
+  However, it only checks `if n == 1`, missing the base case for `n == 0` and leading to maximum recursion depth exceeded!
+  Fix the base case logic by changing at most 3 lines.
+edge_cases:
+  - n = 0
+  - n = 1
+  - larger n values
+starter_code: |
+  def fib(n):
+      if n == 1:
+          return 1
+      return fib(n - 1) + fib(n - 2)
+tests:
+  - {id: v1, visibility: visible, args: [0], expected: 0, tags: [zero, base]}
+  - {id: v2, visibility: visible, args: [1], expected: 1, tags: [single, base]}
+  - {id: v3, visibility: visible, args: [4], expected: 3, tags: [typical]}
+  - {id: h1, visibility: hidden, args: [2], expected: 1, tags: [typical]}
+  - {id: h2, visibility: hidden, args: [3], expected: 2, tags: [typical]}
+  - {id: h3, visibility: hidden, args: [6], expected: 8, tags: [boundary]}
+  - {id: h4, visibility: hidden, args: [8], expected: 21, tags: [typical]}
+  - {id: h5, visibility: hidden, args: [10], expected: 55, tags: [large]}
+references:
+  - |
+    def fib(n):
+        if n <= 0:
+            return 0
+        if n == 1:
+            return 1
+        return fib(n - 1) + fib(n - 2)
+  - |
+    def fib(n):
+        if n <= 1:
+            return max(0, n)
+        a, b = 0, 1
+        for _ in range(2, n + 1):
+            a, b = b, a + b
+        return b
